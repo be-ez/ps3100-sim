@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS-3100 Balance / AM - KLM-62D in the browser</title>
+<link rel="stylesheet" href="../lib/panel.css">
+</head>
+<body>
+
+<main class="room">
+
+  <section class="unit" aria-label="PS-3100 balance and AM panel">
+
+    <div class="panel">
+
+      <header class="panel-head">
+        <div class="badge">
+          <span class="badge-model">PS&#8209;3100</span>
+        </div>
+        <div class="badge-sub">POLYPHONIC SYNTHESIZER &middot; BALANCE&nbsp;MIXER / AM &middot; KLM&#8209;62D</div>
+        <div class="power-block">
+          <span class="lamp power-lamp" id="power-lamp" aria-hidden="true"></span>
+          <button class="rocker" id="power" aria-pressed="false">
+            <span class="rocker-cap"></span>
+          </button>
+          <span class="legend-sm">POWER</span>
+        </div>
+      </header>
+
+      <div class="panel-controls">
+
+        <fieldset class="section section-resonator">
+          <legend>BALANCE&nbsp;&middot;&nbsp;AM</legend>
+          <div class="scope-wrap">
+            <canvas id="scope" class="scope" width="640" height="110" aria-label="output spectrum"></canvas>
+          </div>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob" id="knob-bal" tabindex="0" role="slider"
+                   aria-label="Keyboard volume balance" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">KBD&nbsp;BALANCE</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob" id="knob-int" tabindex="0" role="slider"
+                   aria-label="AM intensity" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">AM&nbsp;INTENSITY</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-fmod" tabindex="0" role="slider"
+                   aria-label="Modulator frequency" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">MOD&nbsp;FREQ</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-variant">
+          <legend>SOURCE</legend>
+          <div class="chips" role="radiogroup" aria-label="input source">
+            <button class="chip chip-yellow selected" data-value="upper" role="radio" aria-checked="true"><i></i>KBD&nbsp;UPPER</button>
+            <button class="chip chip-blue" data-value="lower" role="radio" aria-checked="false"><i></i>KBD&nbsp;LOWER</button>
+            <button class="chip chip-white" data-value="ttones" role="radio" aria-checked="false"><i></i>TWO&#8209;TONE</button>
+          </div>
+          <p class="chip-note">two-tone = internal carrier<br>+ AM&nbsp;MOD&nbsp;IN, sidebands<br>on the scope</p>
+        </fieldset>
+
+      </div>
+    </div>
+
+    <div class="keybed" id="keybed" aria-label="keyboard"></div>
+  </section>
+
+  <footer class="caption">
+    <p>
+      The KLM&#8209;62D balance mixer and AM cell of the PS&#8209;3100: the
+      upper/lower keyboard channels meet a JFET ring-style modulator. In TWO&#8209;TONE the
+      board's internal carrier meets AM&nbsp;MOD&nbsp;IN - watch the sidebands appear on
+      the scope as you raise AM&nbsp;INTENSITY and move MOD&nbsp;FREQ. In the keyboard modes
+      the same cell is your channel mixer.
+    </p>
+    <p><a class="hub-link" href="../">&larr; All boards</a></p>
+  </footer>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

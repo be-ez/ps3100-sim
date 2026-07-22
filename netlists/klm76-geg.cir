@@ -1,0 +1,252 @@
+* KLM-76 General Envelope Generator (PS-3100/3300) - SPICE reference
+*
+* Fidelity status: NODE-BY-NODE TRANSCRIPTION. This deck supersedes the earlier reconstruction;
+* every steering-core connection below was traced visually (crop-by-crop). The few remaining unknowns carry ASSUMED
+* comments.
+*
+* Traced architecture (all three engines share one pattern - 100k series
+* from the panel pot wiper, 2k leg, 1M trim injection from a 100k ADJ
+* trimmer strung across the +/-14.9 rails):
+*   - trigger: inputs are ACTIVE-LOW diode pulls (D101/D102 cathodes at the
+*     pins) on a bus idling at +4.66 V (R101/R102 divider). IC11a compares
+*     the bus (via R103) against +2.74 V (R105/R107): gate on -> cmp1 HIGH.
+*   - delay: PNP pair Q101/Q102, tail R108 10k from +14.9 (always on),
+*     Q101 base+collector grounded, Q102 base = R109/R111 (+R110 1M from
+*     VR101). C102 (1u, bottom plate on -14.9) is clamped near -12.6 V
+*     through R104 1k + D103 while cmp1 is low and ramps to the IC11b
+*     threshold = 0 V (its "-" input is grounded - NOT an R112/R113 level).
+*   - attack: PNP pair Q103/Q104, tail R115 4.7k from cmp2 (IC11b out),
+*     D104 clamps the emitter rail at -0.6 V when cmp2 is low. Q104 base =
+*     R117/R119 (+R118 1M from VR102); Q104 collector charges C103 (env,
+*     1u to G1) up to Q104 saturation, ~ +0.5 V.
+*   - release: NPN pair Q105/Q106, tail R114 1.5k sinking into cmp2 through
+*     the pair emitters, D105 clamps the tail at +0.6 V when cmp2 is high.
+*     Q105 base = -5.22 V reference (R112 10k / R113 5.4k from -14.9,
+*     BUFFERED by IC12a as a follower). Q106 base = that reference through
+*     R116 2k, offset by R121 56k to -14.9 and steered by R122 100k from
+*     the RELEASE pot wiper (+R120 1M from VR103). Q106 discharges env to
+*     ~ -5.9 V (its saturation floor). Release runs whenever cmp2 is low:
+*     idle, during the delay phase, and after gate-off.
+*   - outputs: IC13a unity-follows env. OUT1 (pin 14) = buffered env via
+*     R127+R131 (a -5.9 -> +0.5 V trapezoid, the panel's "0/-5V" output).
+*     /OUT1 (pin 17) = inverted env (IC13b, R128 in / R126 fb, R130 47k
+*     bias comp) via R129. OUT2 (pin 16) = env LEVEL-SHIFTED UP by the
+*     D106 5.1 V zener standing in series between the buffer output and
+*     the R123/VR104 chain off +14.9; VR104's wiper drives the Q107
+*     follower (R124 build-out, R125 pull-down): the 0 -> +5 V trapezoid.
+*     The zener is a level shifter, NOT a cap clamp: the earlier
+*     reconstruction's "zener on the cap" is retracted.
+*   - envelope span: floor ~ -5.9 V (Q106 sat around the -5.22 ref) to
+*     ceiling ~ +0.5 V (Q104 sat around its grounded pair base); VR104
+*     trims the shifted floor onto 0 V at OUT2.
+*
+* Panel law (traced): each pot wiper spans 0..10 V; base offsets are
+* wiper/51 (0..196 mV), i.e. exponential time control over ~3 decades.
+* Delay/attack: wiper at +10 V end = SLOW. Release: wiper at +10 V end =
+* FAST (R121's -173 uA standing offset holds Q106 ~ -240..-40 mV below the
+* reference as the pot rises) - the drawn sense is inverted vs delay/attack;
+* panel rotation orientation is not recoverable from the schematic.
+*
+* Auto-repeat subsystem (Q108..Q111, IC12b, D107..D109, R132..R140,
+* C101/R106): transcribed in the commented block at the end of this file;
+* not simulated (needs the external AUTO switch loop) and not modeled in
+* the DSP - deferred to the full-instrument phase.
+*
+* Pot position params are 0..1 (0 = wiper at G1 end, 1 = wiper at +10 V):
+*   kdel/katt = 1 is slow, krel = 1 is fast (see panel-law note above).
+* Gate: TRIG IN (pin 11) is ACTIVE LOW; the source below idles at +5 V and
+* pulls to 0 V from t=gon to t=goff (gate held = envelope sustains).
+.param kdel=0.0 katt=0.3 krel=0.3 gon=0.02 goff=1.0
+* ADJ trimmer wiper voltages
+.param vtrimd=-7.0 vtrima=9.5 vtrimr=-0.1
+
+* --- rails ([1] = +14.9 V, [3] = -14.9 V, +10 V pot supply) ---
+VCC vcc 0 14.9
+VEE vee 0 -14.9
+VP10 vp10 0 10
+
+* --- gate source: active-low +5 V idle on TRIG IN (pin 11) ---
+VTRIG trig 0 PULSE(5 0 {gon} 2u 2u {goff-gon} 1000)
+* AUTO IN (pin 12) held inactive (idle high; the KBD TRIG / AUTO switch
+* loop lives off-board)
+VAUTO auto 0 5
+
+* --- device models ---
+* sheet note: all NPN 2SC945K, all PNP 2SA733K (generic small-signal params)
+.model Q2SC945 NPN(IS=1e-14 BF=300 VAF=100 RB=100 CJC=4p CJE=8p TF=0.4n)
+.model Q2SA733 PNP(IS=1e-14 BF=250 VAF=80 RB=100 CJC=5p CJE=10p TF=0.5n)
+* D101..D105,D107..D109 part numbers not printed on the scan: ASSUMED
+* small-signal silicon (1S1588-class, 1N4148-like parameters)
+.model DSS D(IS=4.3n N=1.9 RS=0.7 CJO=2p)
+* D106 "5.1V ZD": series level-shift zener (reverse breakdown carries the
+* R123/VR104 chain current, ~0.6..1.1 mA)
+.model DZ51 D(IS=1e-14 N=1.2 RS=1 BV=5.1 IBV=5m)
+
+* 1458 half: tanh-limited VCVS (+/-13.5 V swing on +/-14.9 rails) with
+* output resistance. RO=300 ohm ASSUMED (a 1458 sources/sinks the mA-scale
+* tail currents of this circuit with a few hundred ohms effective output
+* impedance; the earlier 2k figure starved the tails).
+.subckt op1458 inp inn out
+BOP oi 0 V=13.5*tanh(2000*(V(inp)-V(inn))/13.5)
+RO oi out 300
+* small output pole (~0.3 us): smooths the tanh edge for transient
+* convergence; far below any timing constant of the circuit
+CO out 0 1n
+.ends
+
+* --- panel pots (10 kB, +10 V top, bottom G1; wiper = 10*k) ---
+RPD1 vp10 wipd {10k*(1-kdel)+1}
+RPD2 wipd 0 {10k*kdel+1}
+RPA1 vp10 wipa {10k*(1-katt)+1}
+RPA2 wipa 0 {10k*katt+1}
+RPR1 vp10 wipr {10k*(1-krel)+1}
+RPR2 wipr 0 {10k*krel+1}
+
+* ======================= trigger input (IC11a) =========================
+* Bus idles at +14.9*100/320 = +4.66 V; an input pulled low drags the bus
+* to ~+0.6 V through its diode. Comparator reference +2.74 V (R105/R107).
+* Traced: R101/R102 are the bus divider (NOT hysteresis / vref parts);
+* there is no hysteresis network on IC11a - C101/R106 are the edge
+* differentiator for the auto-repeat retrigger line (see end block).
+R101 vcc bus 220k
+R102 bus 0 100k
+D101 bus auto DSS
+D102 bus trig DSS
+R103 bus ntrg 100k
+R105 vcc vref1 120k
+R107 vref1 0 27k
+XCMP1 vref1 ntrg cmp1 op1458
+
+* ========================= delay stage =================================
+* Q101/Q102 2SA733K: tail R108 10k from +14.9 [1] (traced - NOT from the
+* comparator). Q101 base and collector both to G1 (dump side). Q102 base:
+* R109 100k from the DELAY wiper, R111 2k leg to G1, R110 1M from the
+* VR101 wiper (DELAY ADJ, 100k across the rails - modeled as the ideal
+* wiper voltage vtrimd; <=25k wiper impedance vs 1M neglected).
+R109 wipd nbd 100k
+R111 nbd 0 2k
+VTRD vtrd 0 {vtrimd}
+R110 vtrd nbd 1meg
+R108 vcc te1 10k
+Q101 0 0 te1 Q2SA733
+Q102 nd nbd te1 Q2SA733
+* timing cap: bottom plate on -14.9 [3] (traced; Ta polarity, "+" at node)
+C102 nd vee 1u
+* reset path: cmp1 low pulls the cap node to ~-12.6 V through R104 + D103
+* (anode at the cap node, cathode toward R104 - traced)
+R104 ndr cmp1 1k
+D103 nd ndr DSS
+* delay comparator IC11b: "+" = cap node, "-" = G1 (traced: threshold is
+* ground, NOT an R112/R113 divider - those belong to the release reference)
+XCMP2 nd 0 cmp2 op1458
+
+* ========================= attack engine ===============================
+* Q103/Q104 2SA733K "x2 Pair": tail R115 4.7k from cmp2 (traced), D104
+* from G1 to the emitter rail (anode at G1: clamps the rail at -0.6 V when
+* cmp2 is low, limiting reverse bias / recovery time). Q103 base and
+* collector grounded. Q104 base: R117 100k from the ATTACK wiper, R119 2k
+* leg to G1 (scan text "R119 2k (to G1)" CONFIRMED), R118 1M from VR102.
+R117 wipa nba 100k
+R119 nba 0 2k
+VTRA vtra 0 {vtrima}
+R118 vtra nba 1meg
+R115 cmp2 te2 4.7k
+D104 0 te2 DSS
+Q103 0 0 te2 Q2SA733
+Q104 env nba te2 Q2SA733
+* envelope capacitor: to G1 (traced; "-" plate at the node, "+" at G1 -
+* the node rides below ground most of the cycle)
+C103 env 0 1u
+
+* ========================= release engine ==============================
+* Reference: R112 10k from -14.9 [3], R113 5.4k to G1 -> -5.22 V, unity-
+* buffered by IC12a (traced follower) onto Q105's base.
+R112 vee nref 10k
+R113 nref 0 5.4k
+XBUFR nref vref5 vref5 op1458
+* Q105/Q106 2SC945K "x2 Pair": common emitters to the tail; Q105 collector
+* G1 (dump), Q106 collector = env (sink). Tail R114 1.5k into cmp2; D105
+* anode at the tail, cathode G1 (clamps the tail at +0.6 V when cmp2 is
+* high -> pair off during attack/sustain).
+R114 te3 cmp2 1.5k
+D105 te3 0 DSS
+Q105 0 vref5 te3 Q2SC945
+Q106 env nbr te3 Q2SC945
+* Q106 base: R116 2k to the buffered reference (leg), R122 100k from the
+* RELEASE pot wiper (series; reached by the long bottom wire from pin 13),
+* R121 56k to -14.9 (standing offset), R120 1M from VR103 (RELEASE ADJ).
+R116 nbr vref5 2k
+R122 wipr nbr 100k
+R121 nbr vee 56k
+VTRR vtrr 0 {vtrimr}
+R120 vtrr nbr 1meg
+
+* ========================= output stages ===============================
+* IC13a: unity follower on env (traced feedback loop output -> "-").
+XBUF env buf buf op1458
+* OUT1 (pin 14): buffered env through R127 470 + R131 470 (traced: the
+* R127/R128 junction taps down to the OUT1 line). Rest -5.9 V, top +0.5 V.
+R127 buf j1 470
+R131 j1 out1 470
+RL4 out1 0 100k
+* /OUT1 (pin 17): unity inverter about G1 - R128 100k in, R126 100k MF
+* feedback, R130 47k bias compensation on "+" (traced), R129 470 build-out.
+R128 j1 ninv1 100k
+R126 ninv1 outn1 100k
+R130 vplus1 0 47k
+XINV1 vplus1 ninv1 outn1 op1458
+R129 outn1 out1b 470
+RL3 out1b 0 100k
+* OUT2 (pin 16): level shifter. Series chain +14.9 -> R123 10k -> VR104
+* 4.7k -> D106 (cathode up, anode at the buffer output). VR104's wiper
+* (position x, 0=zener end) drives Q107 (collector +14.9, R125 4.7k
+* pull-down to -14.9, R124 470 to the pin). x set so the OUT2 floor sits
+* at 0 V (the real VR104 is the LEVEL trim).
+.param xvr104=0.31
+R123 vcc nvrt 10k
+RVRA nvrt nw {4.7k*(1-xvr104)+1}
+RVRB nw nz {4.7k*xvr104+1}
+D106 buf nz DZ51
+Q107 vcc nw oute Q2SC945
+R125 oute vee 4.7k
+R124 oute out2 470
+RL2 out2 0 100k
+
+* ================== auto-repeat block (TRANSCRIBED, NOT SIMULATED) =====
+* Traced parts and links; kept as comments because the loop is closed by
+* the external panel AUTO switch (AUTO OUT pin 15 -> AUTO IN pin 12) and
+* two links remain uncertain (flagged). DSP modeling deferred.
+*   C101 cmp1 nx 0.01u        ; edge differentiator on the gate comparator
+*   R106 nx 0 10k             ; (traced: to G1 - NOT an input series R)
+*   D107 nx nff1 DSS          ; retrigger line -> flip-flop (long bottom wire)
+*   D108 nff1 nff2 DSS        ; second steering diode along the same line
+*   R139 nff2 b111? 10k       ; junction into the FF - exact node UNCERTAIN
+*   Q109 c109 b109 0 Q2SC945  ; bistable pair, emitters G1
+*   Q110 c110 b110 0 Q2SC945
+*   R134 vcc c109 10k
+*   R137 vcc c110 10k
+*   R135 c109 b110 47k        ; cross-coupling
+*   R136 c110 b109 47k
+*   R138 c110 b111 100k       ; Q111 driver
+*   Q111 autoline b111 0 Q2SC945
+*   R140 autoline auto_out 100   ; AUTO OUT pin 15 (to AUTO switch)
+*   D109 0 autoline DSS       ; clamp (anode G1 - polarity low confidence)
+*   ; end-of-cycle comparator: IC12b "+" appears tied to env (shared tap
+*   ; with IC13a's "+"), "-" reference wire runs left toward the -5.22 V
+*   ; ref area - assignment UNCERTAIN. Output -> R132 10k -> Q108 base,
+*   ; R133 10k base->G1; Q108 emitter G1, marked 2SA733K (PNP) with a
+*   ; 2SC945K label adjacent; collector line rises to the OUT1/R131 wire
+*   ; but the crossing is obscured by the panel dash line - UNCERTAIN.
+*   R132 cmp3 b108 10k
+*   R133 b108 0 10k
+*   Q108 out1? b108 0 Q2SA733
+
+.options reltol=1e-4 abstol=1e-10 vntol=1e-6 method=gear
+
+.control
+set filetype=ascii
+tran 0.5m 3.0
+wrdata geg_out.txt v(out2) v(env) v(nd) v(cmp1) v(cmp2) v(out1b) v(out1)
+.endc
+
+.end

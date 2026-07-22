@@ -1,0 +1,124 @@
+{
+  "boards": [
+    {
+      "id": "panel",
+      "board": "ALL",
+      "title": "Full Panel",
+      "dsp": "(instrument_poly + MG1/MG2/S&H/VP wasm, JS patch field)",
+      "dspName": "panel",
+      "blurb": "Every modeled board on one panel \u2014 modulation sources patch onto the buses through the real Voltage Processors"
+    },
+    {
+      "id": "poly",
+      "board": "ALL",
+      "title": "Polyphonic (48ch)",
+      "dsp": "dsp/instrument_poly.dsp",
+      "dspName": "instrument_poly",
+      "blurb": "The whole keyboard in one wasm: 48 hardwired channels, phase-locked octaves, SINGLE/MULTIPLE trigger"
+    },
+    {
+      "id": "instrument",
+      "board": "ALL",
+      "title": "Composed Instrument",
+      "dsp": "dsp/instrument.dsp",
+      "dspName": "instrument",
+      "blurb": "One wasm, all boards inside \u2014 the GEG\u2192VCA wire is sample-accurate in the DSP"
+    },
+    {
+      "id": "gate",
+      "board": "KLM-69E",
+      "title": "Gate / KORG35",
+      "dsp": "dsp/gate.dsp",
+      "dspName": "gate",
+      "blurb": "One of 12 per-note channels: pass-gate VCA + the KORG35 cell, junction crunch and all"
+    },
+    {
+      "id": "voice",
+      "board": "ALL",
+      "title": "Voice Chain",
+      "dsp": "(chained per-board wasm)",
+      "dspName": "voice",
+      "blurb": "Same chain as chained Web Audio nodes \u2014 A/B against the composed build"
+    },
+    {
+      "id": "resonator",
+      "board": "KLM-62",
+      "title": "Resonators",
+      "dsp": "dsp/resonator.dsp",
+      "dspName": "resonator",
+      "blurb": "Triple vactrol bandpass bank \u2014 play the keybed through it"
+    },
+    {
+      "id": "sh",
+      "board": "KLM-76",
+      "title": "Sample & Hold",
+      "dsp": "dsp/sh.dsp",
+      "dspName": "sh",
+      "blurb": "JFET switch + hold cap, patched to a VCO for stepped random pitch"
+    },
+    {
+      "id": "vca",
+      "board": "KLM-76",
+      "title": "VCA / Phone Amp",
+      "dsp": "dsp/vca.dsp",
+      "dspName": "vca",
+      "blurb": "Dual series vactrol gain cells \u2014 keybed-gated, the vactrol is the envelope"
+    },
+    {
+      "id": "ensemble",
+      "board": "KLM-76",
+      "title": "Ensemble",
+      "dsp": "dsp/ensemble.dsp",
+      "dspName": "ensemble",
+      "blurb": "Two MN3004 BBD channels beating against each other \u2014 hold a chord"
+    },
+    {
+      "id": "modvca",
+      "board": "KLM-63",
+      "title": "MOD-VCA / MG2",
+      "dsp": "dsp/modvca.dsp",
+      "dspName": "modvca",
+      "blurb": "Vactrol gain cell + the board's own triangle LFO, patchable onto its CV"
+    },
+    {
+      "id": "mg1noise",
+      "board": "KLM-63",
+      "title": "MG1 / Noise",
+      "dsp": "dsp/mg1_noise.dsp",
+      "dspName": "mg1_noise",
+      "blurb": "Exponential-law triangle LFO + avalanche noise with the exact pink ladder"
+    },
+    {
+      "id": "balance",
+      "board": "KLM-62D",
+      "title": "Balance / AM",
+      "dsp": "dsp/balance_am.dsp",
+      "dspName": "balance_am",
+      "blurb": "Upper/lower channel mixer meeting a JFET AM cell \u2014 sidebands on the scope"
+    },
+    {
+      "id": "siggen",
+      "board": "KLM-64E",
+      "title": "Signal Generator",
+      "dsp": "dsp/siggen.dsp",
+      "dspName": "siggen",
+      "blurb": "One of the 12 per-note VCO cards: dividers + the 8-level staircase waveshaper"
+    },
+    {
+      "id": "geg",
+      "board": "KLM-76",
+      "title": "GEG Envelope",
+      "dsp": "dsp/geg.dsp",
+      "dspName": "geg",
+      "blurb": "Current-steering trapezoid CV \u2014 delay, linear attack, sustain, linear release"
+    },
+    {
+      "id": "vp",
+      "board": "KLM-76",
+      "title": "Voltage Processors",
+      "dsp": "dsp/vp.dsp",
+      "dspName": "vp",
+      "blurb": "Dual bipolar attenuverters on a shared bus \u2014 sag and crosstalk SPICE-exact"
+    }
+  ]
+}

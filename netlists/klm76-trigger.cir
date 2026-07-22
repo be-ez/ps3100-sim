@@ -1,0 +1,166 @@
+* KLM-76 KBD TRIGGER (PS-3100) - SPICE reference
+*
+* Fidelity status: TRANSCRIPTION. The one item the earlier catalog
+* flagged uncertain - where the IC22a hysteresis resistor R214 lands - was
+* RESOLVED: R214 (150k) and R215 (220k) BOTH terminate on the board +14.9 V
+* rail (visible junction dot + "+14.9 V" contact circle between the panel box
+* and D203/D204). They are FIXED positive-threshold references, NOT output
+* hysteresis. (Electrically necessary too: hysteresis-to-output would latch,
+* because the bus cannot swing below ~0 V to reset it - D201/R205 hold it >=0.)
+*
+* What the sheet is: keyboard-trigger conditioning. The raw keyboard trigger
+* from KLM-69 (pin 29, TRIG IN) lands on a bus that idles just above ground
+* (R202 300k pull-up to +14.9 vs R205 1k pull-down; a key press drives the
+* bus POSITIVE). Three comparators (IC21, IC22a, IC22b - all 1/2 4558, the
+* "1458" crossed out in a revision) square it up and drive three outputs:
+*   - IC21 : internal TRIG OUT (pin 33), threshold = panel SELECT rotary
+*            (OFF, 1..5) tapped off the R208..R213 ladder. DC-coupled ->
+*            a LEVEL that stays asserted while the bus is above threshold.
+*   - IC22a: TRIG OUT SINGLE (pin 31), FIXED threshold +98.7 mV (R204/R214).
+*            DC-coupled -> a LEVEL. Asserted (output LOW) for the whole time
+*            ANY key holds the bus high => the downstream envelope fires once
+*            and sustains; legato does NOT retrigger. "Single trigger."
+*   - IC22b: TRIG OUT MULTIPLE (pin 30), FIXED threshold +67.4 mV (R207b/R215).
+*            AC-coupled (C203 0.068 into R206 270k) -> a PULSE on every
+*            positive bus EDGE, i.e. every new key attack, even in legato =>
+*            the downstream envelope retriggers per key. "Multiple trigger."
+*
+* Output convention (D202/D203/D204 anodes at the comparator outputs, cathodes
+* toward the pins; 1.8k series + 1k load to ground): each pin sits at ~+4.6 V
+* (=(13.5-Vd)*1k/2.8k) when its comparator output is HIGH, and is pulled to
+* 0 V by the 1k load when the comparator output is LOW. So all three jacks are
+* ACTIVE LOW: idle ~+4.6 V ("+5 V"), pulled to GND to trigger - which is what
+* the GEG (klm76-geg.cir) active-low TRIG IN wants (its +4.66 V bus is pulled
+* down through D101/D102 when the jack goes to GND).
+*
+* ---- BEHAVIORAL keyboard (allowed: contacts are off-sheet) --------------
+* The three unlabelled series resistors from the KLM-69 connector and the
+* KLM-69 trigger driver (Q313, off this sheet) are NOT on the KLM-76 drawing.
+* They are lumped here into a smooth voltage source Vkbd through Rkbd into
+* pin 29. Vkbd rises by Vstep for EACH held key (so a 2nd key added in legato
+* is a fresh positive STEP -> a fresh MULTIPLE edge while the SINGLE level
+* stays high). Rkbd/Vstep are ASSUMED (flagged) - chosen so one key drives
+* the bus well above every threshold; the conditioning circuit around them is
+* the faithful transcription. Schedule (seconds), overridable by the tests:
+.param k1on=0.05 k1off=0.45  k2on=0.15 k2off=0.30  k3on=1e9 k3off=1e9
+.param Vstep=10 Rkbd=10k tr=1e-4
+* Panel SELECT position: 1..5 pick a ladder tap; 0 = OFF (wiper -> +15 V,
+* trigger disabled). Default position 3 (~391 mV threshold).
+.param possel=3
+
+* --- rails: [1]=+14.9 V, [3]=-14.9 V, panel +15 V ---
+VCC vcc 0 14.9
+VEE vee 0 -14.9
+VP15 vp15 0 15
+
+* --- device models ---
+* IC21/IC22 = 4558 (dual 1458-class bipolar op-amp; "1458" crossed out on the
+* sheet in a revision). Modeled as a tanh-limited VCVS, +/-13.5 V swing on the
+* +/-14.9 rails, 300 ohm output R (house op1458 subckt, as in klm76-geg.cir).
+.subckt op1458 inp inn out
+BOP oi 0 V=13.5*tanh(2000*(V(inp)-V(inn))/13.5)
+RO oi out 300
+CO out 0 1n
+.ends
+* D201..D204 part numbers not printed on the scan: ASSUMED small-signal Si
+* (1S1588-class, 1N4148-like).
+.model DSS D(IS=4.3n N=1.9 RS=0.7 CJO=2p)
+
+* =================== behavioral keyboard drive ==========================
+* Vkbd = Vstep * (number of keys currently held), smooth tanh edges (tr).
+Bkbd kbd 0 V = {Vstep}*(
++  0.5*(tanh((time-{k1on})/{tr})-tanh((time-{k1off})/{tr}))
++ +0.5*(tanh((time-{k2on})/{tr})-tanh((time-{k2off})/{tr}))
++ +0.5*(tanh((time-{k3on})/{tr})-tanh((time-{k3off})/{tr})) )
+Rkbd kbd p29 {Rkbd}
+
+* ======================= trigger input bus ==============================
+* pin 29 (TRIG IN) -> R201 100 ohm (1k crossed out, revision triangle) -> bus.
+* Bus: R202 300k pull-up to +14.9, R205 1k pull-down (on the IC22b tap), C201
+* 1u/50V electrolytic (+ plate on the bus) to ground, D201 negative clamp
+* (anode ground, cathode bus: holds bus >= -0.6 V so the electrolytic and the
+* op-amp inputs never see reverse voltage).
+R201 p29 bus 100
+R202 vcc bus 300k
+C201 bus 0 1u
+D201 0 bus DSS
+
+* ============ IC21 - internal TRIG OUT (pin 33), panel SELECT ============
+* "-" input = bus, "+" input = SELECT threshold (pin 32) via R203 10k, with
+* C202 0.1 decoupling to ground. Output HIGH while bus < threshold (idle);
+* a key press raises the bus above threshold -> output LOW -> pin 33 -> GND.
+R203 sel wiper 10k
+C202 sel 0 0.1u
+XCMP1 sel bus cmp1 op1458
+D202 cmp1 ntrg DSS
+R216 ntrg trigout 1.8k
+R218 trigout 0 1k
+
+* -- panel threshold ladder (drawn in the PANEL dashed box) --
+* +15 V - R213 11k - t5 - R212 100 - t4 - R211 100 - t3 - R210 100 - t2 -
+* R209 100 - t1 - R208 100 - GND. Taps 1..5 = 130.4/260.9/391.3/521.7/652.2 mV
+* (I = 15/11500 = 1.304 mA; ~130 mV per step - NOTE the old catalog's
+* "10-50 mV" was wrong). OFF ties the wiper to +15 V through R207p 10k.
+* R213 reads 11k with a prior value (looks like 18k) crossed out + triangle.
+R213 vp15 t5 11k
+R212 t5 t4 100
+R211 t4 t3 100
+R210 t3 t2 100
+R209 t2 t1 100
+R208 t1 0 100
+* OFF branch: R207 (PANEL) 10k from the OFF contact to +15 V.
+R207p voff vp15 10k
+* rotary switch: bridge the wiper to the selected node (~0 ohm), all others
+* open (100 Meg). The wiper draws no DC current (op-amp "+"), so wiper = tap.
+.param sw1={possel==1 ? 1m : 100meg}
+.param sw2={possel==2 ? 1m : 100meg}
+.param sw3={possel==3 ? 1m : 100meg}
+.param sw4={possel==4 ? 1m : 100meg}
+.param sw5={possel==5 ? 1m : 100meg}
+.param sw0={possel==0 ? 1m : 100meg}
+RSW1 wiper t1 {sw1}
+RSW2 wiper t2 {sw2}
+RSW3 wiper t3 {sw3}
+RSW4 wiper t4 {sw4}
+RSW5 wiper t5 {sw5}
+RSW0 wiper voff {sw0}
+
+* ============ IC22a - TRIG OUT SINGLE (pin 31), fixed threshold ==========
+* "-" input = bus (DC), "+" input = R204 1k to ground + R214 150k to +14.9 =>
+* fixed +98.68 mV. DC-coupled: output LOW (jack -> GND) whenever the bus
+* exceeds +98.68 mV, i.e. continuously while any key is held. One trigger per
+* legato phrase.  (R214 -> +14.9 confirmed on the scan; NOT to the output.)
+R204 sng 0 1k
+R214 sng vcc 150k
+XCMP2 sng bus cmp2s op1458
+D203 cmp2s nsng DSS
+R217 nsng single 1.8k
+R219 single 0 1k
+
+* ============ IC22b - TRIG OUT MULTIPLE (pin 30), AC-coupled ============
+* Bus load R205 1k to ground. AC coupling C203 0.068 into node "acn", biased
+* to ground by R206 270k (acn rests at 0 V regardless of the bus DC level).
+* "+" input = R207b 1k to ground + R215 220k to +14.9 => fixed +67.42 mV.
+* Every positive bus EDGE (new key attack) spikes acn above +67.42 mV ->
+* output LOW pulse (jack -> GND) of width ~ R206*C203*ln(dV/67.4mV) ~ tens of
+* ms; acn then decays (tau = R206*C203 = 18.4 ms) and the jack returns to
+* +4.6 V. Negative edges (key release) do not pulse. Retrigger per key.
+R205 bus 0 1k
+C203 bus acn 0.068u
+R206 acn 0 270k
+R207b mul 0 1k
+R215 mul vcc 220k
+XCMP3 mul acn cmp2m op1458
+D204 cmp2m nmul DSS
+R220 nmul mult 1.8k
+R221 mult 0 1k
+
+.options reltol=1e-4 abstol=1e-10 vntol=1e-6 method=gear
+
+.control
+set filetype=ascii
+tran 0.1m 0.55
+wrdata trig_out.txt v(bus) v(trigout) v(single) v(mult) v(acn) v(wiper) v(cmp1)
+.endc
+
+.end

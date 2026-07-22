@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS-3100 Resonator - KLM-62 in the browser</title>
+<link rel="stylesheet" href="../lib/panel.css">
+</head>
+<body>
+
+<main class="room">
+
+  <section class="unit" aria-label="PS-3100 resonator panel">
+
+    <div class="panel">
+
+      <header class="panel-head">
+        <div class="badge">
+          <span class="badge-model">PS&#8209;3100</span>
+        </div>
+        <div class="badge-sub">POLYPHONIC SYNTHESIZER &middot; RESONATOR SECTION &middot; KLM&#8209;62</div>
+        <div class="power-block">
+          <span class="lamp power-lamp" id="power-lamp" aria-hidden="true"></span>
+          <button class="rocker" id="power" aria-pressed="false">
+            <span class="rocker-cap"></span>
+          </button>
+          <span class="legend-sm">POWER</span>
+        </div>
+      </header>
+
+      <div class="panel-controls">
+
+        <fieldset class="section section-resonator">
+          <legend>RESONATORS</legend>
+          <div class="scope-wrap">
+            <canvas id="scope" class="scope" width="640" height="110" aria-label="output spectrum"></canvas>
+            <div class="lamps" aria-hidden="true">
+              <span class="glow-lamp" id="vac1"></span>
+              <span class="glow-lamp" id="vac2"></span>
+              <span class="glow-lamp" id="vac3"></span>
+            </div>
+          </div>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-peak1" tabindex="0" role="slider"
+                   aria-label="Peak 1 frequency" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">PEAK&nbsp;1</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-peak2" tabindex="0" role="slider"
+                   aria-label="Peak 2 frequency" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">PEAK&nbsp;2</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-peak3" tabindex="0" role="slider"
+                   aria-label="Peak 3 frequency" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">PEAK&nbsp;3</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob" id="knob-cv" tabindex="0" role="slider"
+                   aria-label="Frequency sweep" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">FREQ&nbsp;(CV&nbsp;BUS)</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob" id="knob-blend" tabindex="0" role="slider"
+                   aria-label="Intensity" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">INTENSITY</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-mg">
+          <legend>MODULATION&nbsp;GENERATOR</legend>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-mgrate" tabindex="0" role="slider"
+                   aria-label="MG rate" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">RATE</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-mgdepth" tabindex="0" role="slider"
+                   aria-label="MG depth" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">DEPTH</span>
+            </div>
+          </div>
+          <div class="mg-switch">
+            <button class="rocker rocker-sm" id="mg-on" aria-pressed="false"><span class="rocker-cap"></span></button>
+            <span class="legend-sm">MG&nbsp;&rarr;&nbsp;FREQ</span>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-variant">
+          <legend>CAP&nbsp;TABLE</legend>
+          <div class="chips" role="radiogroup" aria-label="capacitor color variant">
+            <button class="chip chip-yellow selected" data-color="0" role="radio" aria-checked="true"><i></i>YEL</button>
+            <button class="chip chip-green"  data-color="1" role="radio" aria-checked="false"><i></i>GRN</button>
+            <button class="chip chip-blue"   data-color="2" role="radio" aria-checked="false"><i></i>BLU</button>
+            <button class="chip chip-gray"   data-color="3" role="radio" aria-checked="false"><i></i>GRY</button>
+            <button class="chip chip-white"  data-color="4" role="radio" aria-checked="false"><i></i>WHT</button>
+          </div>
+          <p class="chip-note">C<sub>in</sub>&nbsp;/&nbsp;C<sub>fb</sub> factory variants</p>
+        </fieldset>
+
+      </div>
+    </div>
+
+    <div class="keybed" id="keybed" aria-label="keyboard"></div>
+  </section>
+
+  <footer class="caption">
+    <p>
+      The triple vactrol bandpass resonator of the PS&#8209;3100 (KLM&#8209;62 board),
+      captured in SPICE, validated, and compiled from the same
+      Faust source as the VST3 - running here as WebAssembly.
+      Play the keys (or your computer keyboard, <kbd>A</kbd>&ndash;<kbd>&#39;</kbd> row) and
+      sweep <span class="cap">FREQUENCY</span>; the amber lamps are the three vactrol LEDs.
+    </p>
+    <p><a class="hub-link" href="../">&larr; All boards</a></p>
+  </footer>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS-3100 Sample &amp; Hold - KLM-76 in the browser</title>
+<link rel="stylesheet" href="../lib/panel.css">
+<style>
+  .patch-note { font-size: 8px; letter-spacing: .12em; color: var(--legend-dim); text-align: center; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<main class="room">
+
+  <section class="unit" aria-label="PS-3100 sample and hold panel">
+
+    <div class="panel">
+
+      <header class="panel-head">
+        <div class="badge">
+          <span class="badge-model">PS&#8209;3100</span>
+        </div>
+        <div class="badge-sub">POLYPHONIC SYNTHESIZER &middot; SAMPLE&nbsp;&amp;&nbsp;HOLD &middot; KLM&#8209;76</div>
+        <div class="power-block">
+          <span class="lamp power-lamp" id="power-lamp" aria-hidden="true"></span>
+          <button class="rocker" id="power" aria-pressed="false">
+            <span class="rocker-cap"></span>
+          </button>
+          <span class="legend-sm">POWER</span>
+        </div>
+      </header>
+
+      <div class="panel-controls">
+
+        <fieldset class="section section-resonator">
+          <legend>SAMPLE&nbsp;&amp;&nbsp;HOLD</legend>
+          <div class="scope-wrap">
+            <canvas id="scope" class="scope" width="640" height="110" aria-label="held voltage"></canvas>
+            <div class="lamps" aria-hidden="true">
+              <span class="glow-lamp" id="shind"></span>
+            </div>
+          </div>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob" id="knob-clock" tabindex="0" role="slider"
+                   aria-label="Clock frequency" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">CLOCK&nbsp;FREQ</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-droop" tabindex="0" role="slider"
+                   aria-label="Droop (service)" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">DROOP&nbsp;(SERVICE)</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-mg">
+          <legend>S/H&nbsp;INPUT</legend>
+          <div class="chips" role="radiogroup" aria-label="sample and hold source">
+            <button class="chip chip-white selected" data-value="noise" role="radio" aria-checked="true"><i></i>NOISE</button>
+            <button class="chip chip-blue" data-value="sine" role="radio" aria-checked="false"><i></i>MG&nbsp;SINE</button>
+            <button class="chip chip-yellow" data-value="ramp" role="radio" aria-checked="false"><i></i>RAMP</button>
+          </div>
+          <p class="chip-note">panel pin-jack source</p>
+        </fieldset>
+
+        <fieldset class="section section-variant">
+          <legend>PATCH&nbsp;&middot;&nbsp;S/H&nbsp;OUT&nbsp;&rarr;&nbsp;VCO</legend>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-level" tabindex="0" role="slider"
+                   aria-label="VCO level" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">LEVEL</span>
+            </div>
+          </div>
+          <p class="patch-note">stepped CV drives the<br>oscillator pitch</p>
+        </fieldset>
+
+      </div>
+    </div>
+  </section>
+
+  <footer class="caption">
+    <p>
+      The KLM&#8209;76 sample&nbsp;&amp;&nbsp;hold of the PS&#8209;3100: JFET switch, 0.1&nbsp;&micro;F
+      hold capacitor, and a clock fitted to the panel's &ldquo;~1.2&nbsp;Hz at center&rdquo; annotation
+      - same Faust source as the plugin, compiled to WebAssembly. The scope draws the held
+      voltage; the lamp is the S/H&nbsp;IND flash. Patched here the classic way: stepped random
+      pitch. DROOP exaggerates the CA3140 bias-current sag between samples.
+    </p>
+    <p><a class="hub-link" href="../">&larr; All boards</a></p>
+  </footer>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

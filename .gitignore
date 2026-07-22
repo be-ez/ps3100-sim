@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+ac_out.txt
+netlists/klm63_out.txt
+dsp/*.dsp.json
+analysis/out.log
+analysis/bode.png
+analysis/reference.json
+analysis/coeffs_table.json
+schematics/
+tests/build/
+plugin/build/
+analysis/cv_law.json
+web/test/node_modules/

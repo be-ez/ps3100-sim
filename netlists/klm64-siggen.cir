@@ -1,0 +1,162 @@
+* KLM-64E signal generator (PS3100/PS3300) - one representative note channel
+*
+* Confidence split:
+*
+*   FAITHFUL (values, roles and junction-verified wiring from the scan):
+*   - Pitch entry (re-read): the per-note card pin (39-44) carries the
+*     KLM-62D TEMPERAMENT BUS (-9..-0.55 V, -1.62 V neutral). On the card
+*     it runs through VR11 10k PITCH (series rheostat) and R21 62k "FM"
+*     into the EMITTER of Q11 (2SC945K). Q11's BASE sits on the VR21 1k
+*     SPAN trimmer wiper, whose pot spans the R1 150R / R8 51k(F) node
+*     (R1 to ground, R8 to -14.9 V at an open-circle motherboard terminal
+*     labeled -14.9V on the scan: J = -38 mV). Q11's COLLECTOR feeds the
+*     timing node: Q11 is the CHARGE CURRENT SOURCE,
+*         I = (V(base) - Vbe - Vbus) / (62k + 10k*trim),
+*     so the master period T = CT*dV/I is LINEAR in the bus voltage: one
+*     KLM-62D octave (doubling of (rail - bus)) doubles f once the SPAN
+*     trim nulls the small Vbe/rail offset. Q11's Vbe also cancels the
+*     bus driver Q402's Vbe tempco (the "LINEALITY" scheme).
+*   - Timing caps CT1 (C11~16) + CT2 (C21~26) in parallel from the local
+*     +7.15 V rail to the timing node (chart page 0010; CT1+CT2 tracks
+*     2^(-n/12) within ~1%).
+*   - Waveshaper cell (full re-read; one octave-row cell, x4 rows x6
+*     notes): the row's summing ladder feeds the GATE of Q111 (2SK30-GR),
+*     drain to +14.9 V, source loaded by 22k (R361 pool) to -14.9 V - a
+*     SOURCE FOLLOWER - whose source drives the base of Q151 (2SA733K
+*     PNP). Q151's emitter hangs on BOTH rails: 18k (R291 pool) to WFR
+*     and D31 (anode at WFD, cathode at the emitter). Collector through
+*     22k (R371 pool) to the note/octave output pin. Modes (measured
+*     KLM-63 rails):
+*       saw    (WFR 14.83, WFD~0) : Q151 saturates against the load ->
+*                                    output follows the staircase;
+*       pulse  (WFR~0.4, WFD 7.4-12.8): D31 pins the emitter at WFD-Vd ->
+*                                    comparator; duty = fraction of the
+*                                    staircase below WFD - Vd - Vbe,
+*                                    continuous for PWM;
+*       triangle (WFR 8.7-13.5 TRI ADJ, WFD~0): fold - staircase steps
+*                                    above the WFR-set threshold hit the
+*                                    linear inverting region (gain
+*                                    -Rload/18k), steps below saturate
+*                                    (follower): saw folds into the panel
+*                                    "triangle"; TRI ADJ moves the fold.
+*     No capacitors in the cells (re-verified): the triangle needs none.
+*   - Ladder pools (re-read): row 2 = own tap 100k (R201) + one-up 100k
+*     (R211); row 3 = own 100k (R241) + one-up 200k (R231) + two-up 200k
+*     (R221); row 4 = own 100k (R281) + 200k (R271) + 390k (R261) + 390k
+*     (R251). This deck models ROW 3 (8-level staircase). The row-1 cell
+*     is fed directly from the squaring-chain C41/R41/R51 node: R41/R51
+*     100k/100k center the drive at HALF RAIL (~7.45 V) - that bias is
+*     what places the staircase inside the WFD slicing window.
+*
+*   REPRESENTATIVE (physically reasoned, flagged):
+*   - The Q21/Q31/D11/D21 regenerative reset is still a behavioral
+*     hysteresis switch (transistor topology not recoverable): trips when
+*     the falling ramp reaches ~0.30 V, restores it to within 0.20 V of
+*     the +7.15 V rail through R141 1k ("1CK" read as 1k). Ramp swing
+*     ~6.65 V ~ the full local rail; with the true bus levels this swing
+*     puts note A at 1760 Hz (A6) with trim=0.99/span=1.0, so the old standalone-Rchg
+*     assumption is gone and the master-octave assumption (A6) is now
+*     carried by the trim calibration only.
+*   - vsq/vmid: staircase source swing and center at the shaper gates
+*     (after the squaring buffers / C41 coupling). vmid = 7.45 V is the
+*     R41/R51 half-rail; vsq = 5.2 V pk-pk is chosen so the measured WFD
+*     ladder (7.37/8.99/11.52 V; PWM 6.7-11.9 V) slices the staircase
+*     over its full span (PWM traverses 0..100% duty). Not readable from
+*     the scan; flagged for hardware measurement.
+*   - rload: the output pin drives the motherboard key/gate network
+*     (off-sheet; KLM-69 couples through C301). 100k to ground assumed -
+*     it sets the saturated output level and the triangle fold gain.
+*
+*   BEHAVIORAL: MM5824 divider = XSPICE d_dff toggle chain (exact /2);
+*   squaring chain (Q71~106) = the ADC bridge threshold at mid-ramp (the
+*   linear ramp makes the derived square 50/50); octave/footage gates
+*   (Q41~66) omitted - tap selection is the DSP `octave` control.
+*
+* Parameters (rewritten by tests, keep on ONE line):
+*   CT1/CT2 : tuning caps from the page-0010 chart (note select)
+*   vbus    : temperament-bus voltage at the card pin (-1.62 = neutral)
+*   trim    : VR11 PITCH rheostat 0..1 (x10k); trim+span calibrate A->1760
+*   span    : VR21 SPAN wiper 0..1 (0 = ground end, 1 = J = -38 mV end)
+*   vsq/vmid: staircase source swing (pk-pk) and center at the gates
+*   wfd/wfr : waveform rails from KLM-63 (page 0009), volts
+*   rload   : output-pin load to ground (motherboard, assumed)
+.param CT1=1000p CT2=220p vbus=-1.62 trim=0.99 span=1.0 vsq=5.2 vmid=7.45 wfd=0 wfr=14.83 rload=100k
+
+* nominal mid-spread models; same style as netlists/klm62-cv.cir
+.model QC945 NPN(IS=10f BF=300 VAF=100)
+.model QA733 PNP(IS=10f BF=250 VAF=100)
+* 2SK30A-GR grade: Idss ~4mA, Vp ~ -1.5V (datasheet mid-spread)
+.model J2SK30 NJF(VTO=-1.5 BETA=1.78m LAMBDA=4m)
+.model DSS D(IS=2.5n N=1.7)
+* behavioral relaxation reset (see header): control = vrail - vc; fires
+* when the ramp has fallen ~6.85 V below the rail, releases once restored
+* to within 0.20 V of it (discharge through R141). The 0.20 V release
+* window keeps the switch from latching against Q11's charge current
+* (I*(RON+R141) must stay below it): supports the temperament bus down to
+* ~-14 V, past its -9 V practical bottom.
+.model SWRST SW(VT=3.525 VH=3.325 RON=50 ROFF=1e9)
+
+* supplies: card rails (page-0011 block 5; R6/R7 10R filters and the local
+* +7.15V regulator idealized)
+VP vp149 0 14.9
+VN vn149 0 -14.9
+VR vrail 0 7.15
+
+* ---- pitch entry: temperament bus -> VR11 -> R21 -> Q11 emitter ----
+VCV cvpin 0 {vbus}
+RV11 cvpin nv {max(10k*trim,1)}
+R21 nv ne11 62k
+
+* ---- SPAN base bias: R1/R8 node J, VR21 wiper -> Q11 base ----
+R1 nj 0 150
+R8 nj vn149 51k
+RV21A nj nb {max(1k*(1-span),1)}
+RV21B nb 0 {max(1k*span,1)}
+
+* ---- Q11 charge current source into the timing node ----
+Q11 vc nb ne11 QC945
+
+* timing caps in parallel, from the +7.15V rail (CT1 = C11~16 coarse,
+* CT2 = C21~26 pad); Q11 ramps vc DOWN linearly from the rail
+CT1 vrail vc {CT1}
+CT2 vrail vc {CT2}
+
+* ---- behavioral relaxation reset (Q21/Q31/D11/D21 stand-in) ----
+S1 vrail nk vrail vc SWRST
+R141 nk vc 1k
+
+* ---- squaring + divider (behavioral; MM5824 modeled as 3 toggle stages) ----
+ABRIDGE [vc] [dmck] adcb
+.model adcb adc_bridge(in_low=3.50 in_high=3.85)
+AFF1 nq1b dmck NULL NULL q1 nq1b dff
+AFF2 nq2b nq1b NULL NULL q2 nq2b dff
+AFF3 nq3b nq2b NULL NULL q3 nq3b dff
+.model dff d_dff(clk_delay=10n set_delay=10n reset_delay=10n ic=0
++ rise_delay=10n fall_delay=10n)
+* staircase sources: half-rail center, vsq pk-pk (squaring buffers behavioral)
+ADAC [q1 q2 q3] [vq1 vq2 vq3] dacb
+.model dacb dac_bridge(out_low={vmid-vsq/2} out_high={vmid+vsq/2})
+
+* ---- waveshaper row-3 ladder: own tap f/8 via 100k, f/4 via 200k,
+* f/2 via 200k (R241/R231/R221 pools) ----
+R241 vq3 ns 100k
+R231 vq2 ns 200k
+R221 vq1 ns 200k
+
+* ---- shaper cell: source follower -> PNP slicer/folder ----
+J1 vp149 ns nsrc J2SK30
+R361 nsrc vn149 22k
+Q151 nc nsrc ne15 QA733
+R291 ne15 nwfr 18k
+D31 nwfd ne15 DSS
+VWFD nwfd 0 {wfd}
+VWFR nwfr 0 {wfr}
+R371 nc nout 22k
+RLOAD nout 0 {rload}
+
+.control
+tran 0.5u 22m 2m uic
+wrdata siggen_out.txt v(vc) v(ne11) v(vq1) v(vq2) v(vq3) v(ns) v(nsrc) v(nout)
+.endc
+
+.end

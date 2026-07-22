@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS-3100 Ensemble - KLM-76 in the browser</title>
+<link rel="stylesheet" href="../lib/panel.css">
+</head>
+<body>
+
+<main class="room">
+
+  <section class="unit" aria-label="PS-3100 ensemble panel">
+
+    <div class="panel">
+
+      <header class="panel-head">
+        <div class="badge">
+          <span class="badge-model">PS&#8209;3100</span>
+        </div>
+        <div class="badge-sub">POLYPHONIC SYNTHESIZER &middot; ENSEMBLE &middot; KLM&#8209;76</div>
+        <div class="power-block">
+          <span class="lamp power-lamp" id="power-lamp" aria-hidden="true"></span>
+          <button class="rocker" id="power" aria-pressed="false">
+            <span class="rocker-cap"></span>
+          </button>
+          <span class="legend-sm">POWER</span>
+        </div>
+      </header>
+
+      <div class="panel-controls">
+
+        <fieldset class="section section-resonator">
+          <legend>ENSEMBLE</legend>
+          <div class="scope-wrap">
+            <canvas id="scope" class="scope" width="640" height="110" aria-label="output spectrum"></canvas>
+            <div class="lamps" aria-hidden="true">
+              <span class="glow-lamp" id="lfoa"></span>
+              <span class="glow-lamp" id="lfob"></span>
+            </div>
+          </div>
+          <div class="mg-switch">
+            <button class="rocker" id="ens-on" aria-pressed="true"><span class="rocker-cap"></span></button>
+            <span class="legend-sm">ENSEMBLE</span>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-mg">
+          <legend>BBD&nbsp;CHANNELS&nbsp;(SERVICE)</legend>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-g1" tabindex="0" role="slider"
+                   aria-label="Channel 1 wet" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">CH&nbsp;1&nbsp;&middot;&nbsp;3.06&nbsp;Hz</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-g2" tabindex="0" role="slider"
+                   aria-label="Channel 2 wet" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">CH&nbsp;2&nbsp;&middot;&nbsp;2.54&nbsp;Hz</span>
+            </div>
+          </div>
+          <p class="chip-note">one channel &asymp; vibrato,<br>two beating &asymp; ensemble</p>
+        </fieldset>
+
+      </div>
+    </div>
+
+    <div class="keybed" id="keybed" aria-label="keyboard"></div>
+  </section>
+
+  <footer class="caption">
+    <p>
+      The KLM&#8209;76 Ensemble of the PS&#8209;3100: two MN3004 bucket-brigade delay
+      lines, each clock-modulated by its own CD4069 phase-shift LFO (3.06 and 2.54&nbsp;Hz,
+      measured in SPICE), summed against the dry signal. Hold a chord - the beating
+      between the two detuned channels is the ensemble. The lamps breathe with each
+      channel's LFO.
+    </p>
+    <p><a class="hub-link" href="../">&larr; All boards</a></p>
+  </footer>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

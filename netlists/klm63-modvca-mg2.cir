@@ -1,0 +1,170 @@
+* KLM-63 MOD-VCA + MG2 (PS3100/PS3300) - SPICE reference
+*
+* Topology:
+*   - MOD-VCA (IC21a/b, F201, Q201): IC21a inverts MOD SIG IN by
+*     -R202/R201 = -0.75; its output drives the LDR half of vactrol F201
+*     (HTV P873-G35-201B, same P873 family as the KLM-62 resonator vactrols)
+*     in series with R204 2.2k into IC21b's virtual ground, feedback VR201
+*     10k trimmer. Net VCA gain = +0.75 * VR201/(Rldr + 2.2k) (two
+*     inversions), so bright LED -> ~x2.3 max, dark -> ~-42 dB floor.
+*     LED drive: MOD VCA CONT (pin 29, panel 100k pot across +10V/gnd) ->
+*     R206 10k -> Q201 base (R207 100k + D201 clamp to G3); LED current path
+*     +14.9V -> LED -> R208 1k -> Q201 collector; emitter on R210 1k to G3
+*     with R209 33k to -14.9V. Roughly linear V-to-I above a ~0.2 V
+*     threshold; Q201 saturates near the top of the pot, capping I_led.
+*   - MG2 (IC22a/b, Q202): triangle-core LFO. IC22a integrates C201 0.022u
+*     with R213 1M from the rate node nA; its + input is held at nA/2 by
+*     R214/R216 510k. IC22b is the Schmitt (R218 100k positive feedback vs
+*     R217 51k to G3, thresholds +/-(51/151)*Vsat); its square switches Q202
+*     via R219 100k / R220 10k. Q202 ON grounds R215 510k on the INTEGRATOR
+*     SUMMING NODE, sinking (nA/2)/510k ~= twice the R213 charge current, so
+*     the net input current flips sign: symmetric +/-(nA/2)/(R213*C201)
+*     slopes, f ~= nA/(8*(51/151)*Vsat*R213*C201) ~= 1.25 Hz/V at nA.
+*     Rate node: FREQ CONT pin 26 (panel 10kB pot across +10V/gnd) via R211
+*     15k, biased by R212 1M to +14.9V -> nA ~= 0.96*V26 + 0.22 V.
+*     Triangle out: R221 1k to pin 27, R222 1.5k shunt (x0.6).
+*   - Indicator followers (Q203/Q204): emitter followers from +15V driving
+*     the front-panel MG rate lamps (pins 33/28); bases biased by 75k/27k
+*     dividers against the MG1 (pin 32) and MG2 triangle rails.
+*
+* UNCERTAIN / ASSUMPTIONS:
+*   - R215 placement: CONFIRMED on the summing node by a full-res (500 dpi)
+*     re-read of the scan (2026-07-21). R215's vertical taps the R213 ->
+*     IC22a(-) line at a solid junction dot and CROSSES the + input line
+*     with no dot on its way down to Q202's collector; R216 alone grounds
+*     the + side. An earlier transcription pass misread that dotless
+*     crossing as a junction (placing R215 on nB, which cannot oscillate).
+*     The deck's R215-on-nInt topology is the drawn circuit, not a fix.
+*   - VR201 trimmer position unknown (sets max modulation depth); modeled at
+*     full scale, 10k.
+*   - 4558 output saturation Vsat = +/-13.5 V assumed (typ swing on +/-14.9V
+*     rails); sets MG2 amplitude and thresholds.
+*   - Panel pots (100k MOD VCA, 10kB FREQ) drawn dashed/off-board; modeled
+*     as nominal linear pots across +10V/G3.
+*   - Indicator lamps (pins 33/28) are off-board; assumed 100 ohm lamp-ish
+*     loads to G3 so the followers have a DC path (does not affect VCA/MG2).
+*   - LED current -> LDR resistance: same P873-class power law as
+*     netlists/klm62-cv.cir, R = 15k*(I/1mA)^-0.8 clamped to [1k, 1M]
+*     (no digitized P873 curve; anchored to the 1k lit .. 1M dark range).
+*
+* Parameters (tests rewrite this line, keep on ONE line):
+*   mcv   : MOD VCA CONT panel pot position 0..1 (1 = wiper at +10V); the
+*           default DC sweep drives it via v(pos) instead, see .control
+*   rate  : MG2 FREQ CONT panel pot position 0..1
+*   rsig  : signal-path LDR resistance (P873D R=) for AC runs; tests set it
+*           from the v(rldr) readout of the DC sweep at the same mcv
+*   vr201 : VR201 feedback trimmer value actually in circuit (0..10k)
+*   vind1 : DC stand-in for the MG1 waveform on pin 32 (indicator only)
+.param mcv=0.5 rate=0.5 rsig=47k vr201=10k vind1=0
+
+.include models/vactrol.lib
+
+* opamp: VCVS-style with tanh saturation (open-loop gain 1e6). The VCA
+* halves stay in the linear region; MG2's Schmitt lives on the +/-Vsat rails.
+* The 10R/100n output RC (~1 us) stands in for the 4558's finite output
+* impedance/slew: it breaks the Schmitt's algebraic positive-feedback loop so
+* transient analysis converges; negligible at LFO and audio frequencies.
+.subckt opamp inp inn out Vsat=13.5
+B1 int 0 V = {Vsat}*tanh(1e6/{Vsat}*(v(inp)-v(inn)))
+R1 int out 10
+C1 out 0 100n
+.ends
+
+* nominal mid-spread models, same cards as netlists/klm62-cv.cir
+.model QC945 NPN(IS=10f BF=300 VAF=100)
+.model DCLAMP D(IS=10f)
+.model LEDP873 D(IS=1e-18 N=1.8 RS=1)
+
+* supplies (boxed pins: [9] +15V, [5]/[7] +14.9V, [6]/[8] -14.9V)
+VP15 vp15 0 15
+VP149 vp149 0 14.9
+VN149 vn149 0 -14.9
+VP10 vp10 0 10
+
+* ---- MOD VCA CONT panel pot (100k across +10V/G3, wiper -> pin 29) ----
+* position driven by v(pos) so the default deck can DC-sweep it with pot
+* loading included; VPOS defaults to the mcv param
+VPOS pos 0 {mcv}
+RPT1 vp10 p29 r = 'max(100e3*(1-v(pos)),1)'
+RPT2 p29 0 r = 'max(100e3*v(pos),1)'
+
+* ---- MOD-VCA LED driver (F201 LED side, Q201) ----
+R206 p29 n6 10k
+R207 n6 0 100k
+D201 0 n6 DCLAMP
+Q201 n7 n6 n8 QC945
+DF201 vp149 ledk LEDP873
+R208 ledk n7a 1k
+* series ammeter for the LED current readout (positive n7a -> n7)
+VSF n7a n7 0
+R209 n8 vn149 33k
+R210 n8 0 1k
+* LED current -> LDR resistance readout (P873-class CdS power law; see
+* header). v(rldr) is the F201 photocell resistance in ohms.
+BRL rldr 0 V = min(1e6, max(1e3, 15e3*pow(max(i(VSF),1e-12)/1e-3, -0.8)))
+
+* ---- MOD-VCA signal path (IC21a -> F201 LDR -> IC21b) ----
+* AC runs substitute rsig with the v(rldr) readout at the operating point;
+* the LDR is the static P873D from netlists/models/vactrol.lib.
+VSIG p30 0 DC 0 AC 1
+R201 p30 n1 100k
+R202 n1 n2 75k
+R203 np21 0 47k
+XIC21A np21 n1 n2 opamp
+XF201 n2 n3 P873D R={rsig}
+R204 n3 n4 2.2k
+RVR201 n4 n5 {vr201}
+XIC21B 0 n4 n5 opamp
+R205 n5 p31 470
+* downstream load on MOD SIG OUT is off-board and untranscribed; high-Z
+* placeholder (470R against 1M costs 0.004 dB -- negligible either way)
+RL31 p31 0 1meg
+
+* ---- MG2 FREQ CONT panel pot (10kB across +10V/G3, wiper -> pin 26) ----
+RRT1 vp10 p26 {max(10k*(1-rate),1)}
+RRT2 p26 0 {max(10k*rate,1)}
+
+* ---- MG2 triangle core (IC22a integrator + IC22b Schmitt + Q202) ----
+R211 p26 nA 15k
+R212 nA vp149 1meg
+R213 nA nInt 1meg
+C201 nTri nInt 0.022u
+XIC22A nB nInt nTri opamp
+* + input reference nA/2
+R214 nA nB 510k
+R216 nB 0 510k
+* direction switch: R215 on the SUMMING NODE (confirmed by full-res scan
+* re-read -- see header; an earlier pass had misread it onto the + input)
+R215 nInt qc 510k
+Q202 qc nC 0 QC945
+R219 nSq nC 100k
+R220 nC 0 10k
+* Schmitt: - input = triangle, + input = R217/R218 divider off the square
+XIC22B nD nTri nSq opamp
+R217 nD 0 51k
+R218 nD nSq 100k
+* triangle output pad to pin 27 (R222 revised 1k -> 1.5k per scan)
+R221 nTri p27 1k
+R222 p27 0 1.5k
+
+* ---- indicator lamp followers (front-panel MG rate lamps) ----
+VIND1 p32 0 {vind1}
+R223 vp15 nb3 75k
+R224 nb3 p32 27k
+Q203 vp15 nb3 ne3 QC945
+R225 ne3 p33 220
+RLMP1 p33 0 100
+R226 vp15 nb4 75k
+R227 nb4 nTri 27k
+Q204 vp15 nb4 ne4 QC945
+R228 ne4 p28 470
+RLMP2 p28 0 100
+
+.control
+* default analysis: MOD VCA CONT law -- pot position 0..1 -> LED current and
+* F201 photocell resistance (pot loading included via the behavioral pot)
+dc VPOS 0 1 0.01
+wrdata klm63_out.txt v(rldr) i(VSF) v(p29) v(n6)
+.endc
+
+.end

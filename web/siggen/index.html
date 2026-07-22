@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS-3100 Signal Generator - KLM-64 in the browser</title>
+<link rel="stylesheet" href="../lib/panel.css">
+</head>
+<body>
+
+<main class="room">
+
+  <section class="unit" aria-label="PS-3100 signal generator panel">
+
+    <div class="panel">
+
+      <header class="panel-head">
+        <div class="badge">
+          <span class="badge-model">PS&#8209;3100</span>
+        </div>
+        <div class="badge-sub">POLYPHONIC SYNTHESIZER &middot; SIGNAL&nbsp;GENERATOR &middot; KLM&#8209;64E</div>
+        <div class="power-block">
+          <span class="lamp power-lamp" id="power-lamp" aria-hidden="true"></span>
+          <button class="rocker" id="power" aria-pressed="false">
+            <span class="rocker-cap"></span>
+          </button>
+          <span class="legend-sm">POWER</span>
+        </div>
+      </header>
+
+      <div class="panel-controls">
+
+        <fieldset class="section section-resonator">
+          <legend>SIGNAL&nbsp;GENERATOR</legend>
+          <div class="scope-wrap">
+            <canvas id="scope" class="scope" width="640" height="110" aria-label="output spectrum"></canvas>
+          </div>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob" id="knob-wfd" tabindex="0" role="slider"
+                   aria-label="Waveform WFD" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">WAVE&nbsp;FORM&nbsp;(WFD)</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-wfr" tabindex="0" role="slider"
+                   aria-label="Waveform WFR" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">WFR</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-mg">
+          <legend>VIBRATO&nbsp;(FM&nbsp;BUS)</legend>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-vrate" tabindex="0" role="slider"
+                   aria-label="Vibrato rate" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">RATE</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-vdepth" tabindex="0" role="slider"
+                   aria-label="Vibrato depth" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">DEPTH</span>
+            </div>
+          </div>
+          <div class="mg-switch">
+            <button class="rocker rocker-sm" id="vib-on" aria-pressed="false"><span class="rocker-cap"></span></button>
+            <span class="legend-sm">MG&nbsp;&rarr;&nbsp;FM</span>
+          </div>
+        </fieldset>
+
+      </div>
+    </div>
+
+    <div class="keybed" id="keybed" aria-label="keyboard"></div>
+  </section>
+
+  <footer class="caption">
+    <p>
+      The KLM&#8209;64E signal generator of the PS&#8209;3100 - one of the 12
+      per-note cards that make it fully polyphonic. A relaxation VCO tuned by the
+      cap chart, binary dividers, and the 8-level staircase waveshaper:
+      sweep <span class="cap">WAVE&nbsp;FORM</span> from the saw family into the quantized-duty
+      pulse family. The keybed picks (note, octave&nbsp;row) exactly as the key matrix does;
+      gating is a bench convenience - the real card free-runs into the GEG/VCA.
+    </p>
+    <p><a class="hub-link" href="../">&larr; All boards</a></p>
+  </footer>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

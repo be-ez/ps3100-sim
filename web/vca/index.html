@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS-3100 VCA - KLM-76 in the browser</title>
+<link rel="stylesheet" href="../lib/panel.css">
+</head>
+<body>
+
+<main class="room">
+
+  <section class="unit" aria-label="PS-3100 VCA panel">
+
+    <div class="panel">
+
+      <header class="panel-head">
+        <div class="badge">
+          <span class="badge-model">PS&#8209;3100</span>
+        </div>
+        <div class="badge-sub">POLYPHONIC SYNTHESIZER &middot; VCA / PHONE&nbsp;AMP &middot; KLM&#8209;76</div>
+        <div class="power-block">
+          <span class="lamp power-lamp" id="power-lamp" aria-hidden="true"></span>
+          <button class="rocker" id="power" aria-pressed="false">
+            <span class="rocker-cap"></span>
+          </button>
+          <span class="legend-sm">POWER</span>
+        </div>
+      </header>
+
+      <div class="panel-controls">
+
+        <fieldset class="section section-resonator">
+          <legend>VCA&nbsp;1&nbsp;&middot;&nbsp;VCA&nbsp;2</legend>
+          <div class="scope-wrap">
+            <canvas id="scope" class="scope" width="640" height="110" aria-label="output envelope"></canvas>
+            <div class="lamps" aria-hidden="true">
+              <span class="glow-lamp" id="vac1"></span>
+              <span class="glow-lamp" id="vac2"></span>
+            </div>
+          </div>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob" id="knob-cv1" tabindex="0" role="slider"
+                   aria-label="VCA 1 CONT" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">VCA&nbsp;1&nbsp;CONT</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob" id="knob-cv2" tabindex="0" role="slider"
+                   aria-label="VCA 2 CONT" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">VCA&nbsp;2&nbsp;CONT</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-mg">
+          <legend>MODULATION&nbsp;GENERATOR</legend>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-mgrate" tabindex="0" role="slider"
+                   aria-label="MG rate" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">RATE</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-mgdepth" tabindex="0" role="slider"
+                   aria-label="MG depth" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">DEPTH</span>
+            </div>
+          </div>
+          <div class="mg-switch">
+            <button class="rocker rocker-sm" id="mg-on" aria-pressed="false"><span class="rocker-cap"></span></button>
+            <span class="legend-sm">MG&nbsp;&rarr;&nbsp;VCA&nbsp;2</span>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-variant">
+          <legend>MONITOR</legend>
+          <div class="chips" role="radiogroup" aria-label="monitor point">
+            <button class="chip chip-white selected" data-value="0" role="radio" aria-checked="true"><i></i>VCA&nbsp;2&nbsp;OUT</button>
+            <button class="chip chip-gray" data-value="1" role="radio" aria-checked="false"><i></i>PHONE&nbsp;AMP</button>
+          </div>
+          <p class="chip-note">pin&nbsp;35 / headphone follower</p>
+        </fieldset>
+
+      </div>
+    </div>
+
+    <div class="keybed" id="keybed" aria-label="keyboard"></div>
+  </section>
+
+  <footer class="caption">
+    <p>
+      The KLM&#8209;76 dual VCA of the PS&#8209;3100: two P873 vactrol gain cells in
+      series, here gated by the keybed the way GEG&nbsp;OUT drives VCA&nbsp;1&nbsp;CONT in the real
+      instrument - the soft attack and slow release you hear <em>is</em> the vactrol, not an
+      envelope generator. MG on VCA&nbsp;2 gives tremolo; the scope draws the output envelope,
+      and the lamps are the two vactrol LEDs.
+    </p>
+    <p><a class="hub-link" href="../">&larr; All boards</a></p>
+  </footer>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

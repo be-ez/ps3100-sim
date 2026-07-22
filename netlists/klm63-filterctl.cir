@@ -1,0 +1,114 @@
+* KLM-63 FILTER CONTROL (PS3100/3300) - SPICE reference
+*
+* This is the CV utility board that produces the two master filter-cutoff
+* buses FCU (pin 9, upper bank) and FCL (pin 10, lower bank) consumed by the
+* KLM-69 gate boards' KORG35 cells, plus the fixed FC BIAS (pin 4).
+*
+* Topology (all junctions verified on the ~500 dpi scan):
+*   - IC1a (1/2 4558): unity inverting summer. FC (pin 5), MOD1 (pin 6),
+*     MOD2 (pin 7) through R9/R10/R11 100k into the virtual ground, R15 100k
+*     feedback. The FC ADJ offset leg joins the same node: R13 100k from the
+*     wiper of VR1 100k, whose string is G1 - R12 100k - VR1 - R14 22k -
+*     -14.9V. Wiper voltage -6.7..-13.4 V (unloaded), so IC1a idles at a
+*     POSITIVE offset (+4.3..+11.2 V after R13 wiper loading).
+*   - IC1b (FCU amp): inverting, R16/R17 100k/100k from IC1a. Non-inverting
+*     input lifted by BAL (pin 8) through R18 150k (revised from 100k, tri-
+*     angle) with R19 100k to G1: vo2 = -vo1 + 2*(100/250)*BAL = -vo1+0.8*BAL
+*   - IC2a (FCL amp): R23 100k from IC1a AND R24 150k (revised from 100k)
+*     from BAL both into the INVERTING input, R25 100k feedback, + input to
+*     G1: vo3 = -vo1 - (100/150)*BAL.  NOT a mirror of IC1b: BAL moves FCU and FCL in
+*     OPPOSITE directions - a true upper/lower balance crossfade (with the
+*     pre-revision 100k values the BAL gains were exactly +1/-1).
+*   - Output pads: vo2 -> R20 750 -> FCU node, with R21 1k to -14.9 V and
+*     R22 15R to G1.  vo3 -> R26 750 -> FCL node, R27 1.5k to -14.9 V,
+*     R28 15R to G1.  The 15R legs make FCU/FCL STIFF (~14.5 ohm), SMALL
+*     (~ -0.47..+0.04 V) buses:
+*       FCU = 0.019324*vo2 - 0.215942   (Zout = 14.49 ohm)
+*       FCL = 0.019417*vo3 - 0.144660   (Zout = 14.56 ohm)
+*     i.e. the "47k/680"-style CV attenuation of the MS-10 KORG35 deck lives
+*     HERE at the source on the PS-3100; the per-note 47k series resistors on
+*     the gate boards then feed the module pins from this low-Z line, so 12+
+*     notes of 47k loading sag the bus by <0.4 % (see tests).
+*   - FC BIAS: R29 10k from -14.9 V to pin 4 (goes off-board, presumably the
+*     panel FILTER CUTOFF slider supply).
+*
+* Simplifications (house style):
+*   - G1/G2/G3 ground domains collapsed to node 0; the R1-8/C1-8 10R/100u
+*     rail decoupling ladder is replaced by an ideal -14.9 V local rail (the
+*     board draws mA-scale static current; the ladder drops millivolts and
+*     shapes nothing in the CV path - there are NO capacitors in it at all,
+*     the board is purely resistive/DC).
+*   - 4558 halves are ideal opamps (gain 1e6) with the output clamped at
+*     +/-13 V: the 4558 swings ~+/-13.5 V lightly loaded on +/-14.9 V rails,
+*     less into the ~765 ohm load of the output pads. 13 V is a round
+*     mid-estimate [UNCERTAIN: load-dependent; only matters for the extreme
+*     clip boundaries of the buses, the quiescent region sits below +/-12 V].
+*
+* Params (rewritten by tests): CV pin volts, FC ADJ wiper position fcadj
+* (0 = wiper at the R12/ground end = least offset, 1 = at the R14/-14.9 end),
+* and bus load resistors (1e12 = open; 12-note KORG35 bank ~= 47k/12).
+.param vfc=0 vmod1=0 vmod2=0 vbal=0 fcadj=0.5 rloadu=1e12 rloadl=1e12 rloadb=1e12
+
+* ideal opamp with 4558 output swing clamp (+/-13 V, see header)
+.subckt opamp4558 inp inn out
+E1 out 0 TABLE {1e6*(V(inp)-V(inn))} = (-13,-13) (13,13)
+.ends
+
+* CV inputs (panel FC slider, MOD1/MOD2 mod buses, BAL bus)
+VFC fc 0 DC {vfc}
+VM1 mod1 0 DC {vmod1}
+VM2 mod2 0 DC {vmod2}
+VBAL bal 0 DC {vbal}
+
+* local negative rail (boxed [2] on the sheet)
+VNEG vneg 0 DC -14.9
+
+* IC1a: CV input mixer, inverting summer
+R9 fc nsum 100k
+R10 mod1 nsum 100k
+R11 mod2 nsum 100k
+R15 nsum vo1 100k
+XIC1A 0 nsum vo1 opamp4558
+
+* FC ADJ offset network: G1 - R12 - VR1(100k) - R14 - -14.9V, wiper -> R13
+R12 nva 0 100k
+RVRA nva nw {max(100k*fcadj,1)}
+RVRB nw nvb {max(100k*(1-fcadj),1)}
+R14 nvb vneg 22k
+R13 nw nsum 100k
+
+* IC1b: FCU output amp (BAL lifts the + input)
+R16 vo1 ninv2 100k
+R17 ninv2 vo2 100k
+R18 bal np2 150k
+R19 np2 0 100k
+XIC1B np2 ninv2 vo2 opamp4558
+
+* IC2a: FCL output amp (BAL sums into the - input; + input to G1)
+R23 vo1 ninv3 100k
+R24 bal ninv3 150k
+R25 ninv3 vo3 100k
+XIC2A 0 ninv3 vo3 opamp4558
+
+* FCU output pad (pin 9)
+R20 vo2 fcu 750
+R21 fcu vneg 1k
+R22 fcu 0 15
+RLU fcu 0 {rloadu}
+
+* FCL output pad (pin 10)
+R26 vo3 fcl 750
+R27 fcl vneg 1.5k
+R28 fcl 0 15
+RLL fcl 0 {rloadl}
+
+* FC BIAS (pin 4)
+R29 vneg fcbias 10k
+RLB fcbias 0 {rloadb}
+
+.control
+op
+print v(vo1) v(vo2) v(vo3) v(fcu) v(fcl) v(fcbias)
+.endc
+
+.end

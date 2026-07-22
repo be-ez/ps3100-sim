@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS-3100 Gate + KORG35 - KLM-69E in the browser</title>
+<link rel="stylesheet" href="../lib/panel.css">
+</head>
+<body>
+
+<main class="room">
+
+  <section class="unit" aria-label="PS-3100 gate and KORG35 panel">
+
+    <div class="panel">
+
+      <header class="panel-head">
+        <div class="badge">
+          <span class="badge-model">PS&#8209;3100</span>
+        </div>
+        <div class="badge-sub">POLYPHONIC SYNTHESIZER &middot; GATE&nbsp;/&nbsp;KORG35&nbsp;LPF &middot; KLM&#8209;69E</div>
+        <div class="power-block">
+          <span class="lamp power-lamp" id="power-lamp" aria-hidden="true"></span>
+          <button class="rocker" id="power" aria-pressed="false">
+            <span class="rocker-cap"></span>
+          </button>
+          <span class="legend-sm">POWER</span>
+        </div>
+      </header>
+
+      <div class="panel-controls">
+
+        <fieldset class="section section-resonator">
+          <legend>GATE&nbsp;CHANNEL</legend>
+          <div class="scope-wrap">
+            <canvas id="scope" class="scope" width="640" height="110" aria-label="output spectrum"></canvas>
+            <div class="lamps" aria-hidden="true">
+              <span class="glow-lamp" id="env-lamp"></span>
+            </div>
+          </div>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob" id="knob-vfc" tabindex="0" role="slider"
+                   aria-label="Filter cutoff" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">CUTOFF&nbsp;(FC&nbsp;BUS)</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-drive" tabindex="0" role="slider"
+                   aria-label="Drive" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">DRIVE</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-expand" tabindex="0" role="slider"
+                   aria-label="Expand" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">EXPAND</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-mg">
+          <legend>ENVELOPE</legend>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-attack" tabindex="0" role="slider"
+                   aria-label="Attack" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">ATTACK</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-release" tabindex="0" role="slider"
+                   aria-label="Release" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">RELEASE</span>
+            </div>
+          </div>
+          <p class="chip-note">C201&nbsp;RC pair:<br>~ms attack, up to<br>~4.7&nbsp;s release bleed</p>
+        </fieldset>
+
+      </div>
+    </div>
+
+    <div class="keybed" id="keybed" aria-label="keyboard"></div>
+  </section>
+
+  <footer class="caption">
+    <p>
+      One of the twelve KLM&#8209;69E gate channels of the PS&#8209;3100: a CD4007
+      pass-gate VCA with its RC envelope, then the KORG35 Sallen&#8209;Key cell -
+      reverse-saturated junctions whose distortion is part of the sound. Keys gate the
+      channel; <span class="cap">DRIVE</span> pushes the mV-scale core into its
+      H2-dominant saturation, <span class="cap">CUTOFF</span> is the FC bus voltage.
+    </p>
+    <p><a class="hub-link" href="../">&larr; All boards</a></p>
+  </footer>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

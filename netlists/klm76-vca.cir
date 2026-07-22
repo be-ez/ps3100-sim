@@ -1,0 +1,195 @@
+* KLM-76 VCA / Phone Amp (PS3100) - SPICE reference
+*
+* Topology:
+*   - VCA1 (F301, IC31a): in (pin 37) -> R301 22k -> node loaded by R302 3.3k
+*     to G2 -> F301 LDR -> C301 1u -> inverting input; feedback R306 22k +
+*     trimmer VR301 100k; out via R309 470 to pin 38 (which feeds VCA2 in the
+*     panel's normal routing, modeled here as hard-wired).
+*     Midband gain = -(R302/(R301+R302)) * Rf / (R301||R302 + Rldr): the LDR
+*     is a variable series element, dark = high R = low gain. C301 makes a
+*     one-pole HPF at 1/(2*pi*C301*(R301||R302 + Rldr)) = 21 Hz bright,
+*     sub-Hz dark.
+*   - VCA1 LED driver (Q301): +14.9V -> R303 100k -> node "A"; R304 4.7k
+*     branches from node A to the base (full-res re-read 2026-07-21: the tap
+*     is ABOVE D301, not at the CV node); D301 (anode at node A) down to the
+*     CV node = pin 36 with R305 56k to G1. With a CV source patched, D301
+*     clamps node A one Vf above the CV, so the base rides CV + Vf - a
+*     VBE-compensating level shift that moves the drive law ~0.6 V left. An
+*     unplugged CV input floats the node up to ~5V ("normalled on" = VCA
+*     open). D302 clamps the base at -Vf.
+*     Emitter network: R308 4.7k || (D303-D306 + R324 470) to G1 - the
+*     4-diode chain adds a steep 1/470 slope above Ve ~= 2.5V (drive
+*     expansion); collector from +14.9V via F301 LED + R307 470 (Q301
+*     saturates at high CV, capping LED current at ~(14.9-Vf-Ve)/470).
+*   - VCA2 (F302, IC31b "IC71", Q302): mirror of VCA1 with R310/R326/C302,
+*     feedback R314 22k + VR302 100k with CF302 47p across it (rev-4), out
+*     via R317 220 to pin 35; driver R311/D307/R313/R312/D308/Q302/R315/
+*     R316/D309-D312/R325.
+*   - Phone amp (IC32, Q303/Q304): pin 41 -> R331 10k -> non-inverting
+*     input; R332 10k sits on the INVERTING input node to G2 (full-res
+*     re-read 2026-07-21: the feedback bus R333 -> "-" -> R332 -> G2 is one
+*     continuous line with a junction dot at the "-" branch, and it crosses
+*     the R331 line with no dot). Opamp output biases a complementary
+*     emitter follower (D313/D314, R335 3.3k to -14.9V, emitter resistors
+*     R334/R336 10R); overall feedback R333 27k from the follower output to
+*     the inverting node -> non-inverting gain 1 + 27k/10k = 3.7 (+11.4 dB),
+*     out via R337 100R to pin 42 (load = panel phones jack, left open here).
+*
+* Uncertain values: CF302 "47P" read is
+* supported by the full-res re-read (the "7" carries a serif but no other
+* digit fits); Q301/Q302 types unmarked (2SC945-class assumed, as on
+* KLM-62D); Q303/Q304 and all diode types unmarked (re-read confirms: no
+* type text anywhere, designators only; Q303 drawn NPN, Q304 drawn PNP);
+* D301/D307 orientation RESOLVED by the re-read: series in the pull-up,
+* anode at the R303/R311 side, cathode at the CV node. R332's node RESOLVED:
+* inverting input (see Phone amp above).
+* CORRECTED TOPOLOGY (same re-read, wired in below): R304 and R312 tap the
+* node ABOVE D301/D307 (between the 100k pull-up and the diode), not the CV
+* node as first transcribed - the base rides one Vf above the CV (a
+* VBE-compensating level shift, moving the drive law ~0.6 V left). The CV
+* table in dsp/vca.dsp and the vr trim were regenerated to match.
+*
+* Parameters (rewritten on ONE line by tests):
+*   vc1/vc2   : VCA1/VCA2 control voltages at pins 36/34. REAL panel scale is
+*               0..+5V (cross-board reconciliation 2026-07-21: the panel VCA
+*               CV jacks are printed 0V~+5V, image-verified on scan p0023;
+*               GEG OUT2 tops at +5.87 V; the Voltage Processor outputs are
+*               +/-5 V bipolar - the old 0..+10V assumption was wrong).
+*   rldr1/2   : F301/F302 LDR resistance for the AC audio path (the CV->R
+*               coupling is read out separately from the DC sweep, klm62 style)
+*   vr1/vr2   : VR301/VR302 trim fraction 0..1. Default 0.301 is calibrated
+*               for unity VCA midband gain at the REAL full drive, vc=5 (the
+*               panel jacks' printed maximum) -> Rldr=3922, Rf =
+*               (2869.6+3922)/0.13043 = 52.1k. The +5 V panel figure is
+*               chosen over the traced GEG sustain (+5.87 V, trim- and
+*               model-dependent) as the calibration point; at +5.87 V the
+*               chain then sits +2.1 dB above unity (documented residual).
+*               Factory trim procedure unknown.
+.param vc1=5 vc2=5 rldr1=4.7k rldr2=4.7k vr1=0.301 vr2=0.301
+
+.include models/vactrol.lib
+
+* rail-limited opamp (1/2 4558 on +/-14.9V rails, swing ~ +/-13.4V): bounded
+* tanh keeps the phone-amp headroom physical; AC linearizes to gain 1e6
+.subckt opamp inp inn out
+B1 out 0 V = 13.4*tanh(1e6*(v(inp)-v(inn))/13.4)
+.ends
+
+* nominal mid-spread models (types unmarked on the sheet; 2SC945-class NPN
+* assumed for the LED drivers, matching the KLM-62D drive circuit idiom)
+.model QC945 NPN(IS=10f BF=300 VAF=100)
+* phone-amp output pair: types unmarked, generic medium-power complements
+.model QNOUT NPN(IS=1e-14 BF=100 VAF=100)
+.model QPOUT PNP(IS=1e-14 BF=100 VAF=100)
+.model DCLAMP D(IS=10f)
+* photocoupler LED half: red-LED-like Vf ~= 1.6V at mA currents
+.model LEDP873 D(IS=1e-18 N=1.8 RS=1)
+
+* supplies (boxed 1/2 = +14.9V, boxed 4 = -14.9V; ideal sources)
+VP1 vp149 0 14.9
+VN4 vn149 0 -14.9
+
+* control and signal sources
+VC1 cv36 0 {vc1}
+VC2 cv34 0 {vc2}
+VIN in37 0 DC 0 AC 1
+VPH phin41 0 DC 0 AC 1
+
+* ---- VCA1 LED driver: Q301, F301 LED ----
+R303 vp149 nd301 100k
+D301 nd301 ncv1 DCLAMP
+R305 ncv1 0 56k
+* R304 taps nd301 - the node ABOVE D301 (full-res re-read 2026-07-21): the
+* base rides one Vf above the CV, a VBE-compensating level shift
+R304 nd301 nb1 4.7k
+* D302 clamps the base one Vf below G1 (protects VBE on negative CVs)
+D302 0 nb1 DCLAMP
+Q301 nc1 nb1 ne1 QC945
+R308 ne1 0 4.7k
+D303 ne1 ndc1a DCLAMP
+D304 ndc1a ndc1b DCLAMP
+D305 ndc1b ndc1c DCLAMP
+D306 ndc1c ndc1d DCLAMP
+R324 ndc1d 0 470
+DF301 vp149 na1 LEDP873
+R307 na1 nr1 470
+VS1 nr1 nc1 DC 0
+* CV net at pin 36: driven directly by VC1 (the R303/D301 pull-up matters
+* only when the panel leaves the pin floating)
+RCV1 cv36 ncv1 1m
+
+* ---- VCA2 LED driver: Q302, F302 LED (mirror) ----
+R311 vp149 nd307 100k
+D307 nd307 ncv2 DCLAMP
+R313 ncv2 0 56k
+R312 nd307 nb2 4.7k
+D308 0 nb2 DCLAMP
+Q302 nc2 nb2 ne2 QC945
+R316 ne2 0 4.7k
+D309 ne2 ndc2a DCLAMP
+D310 ndc2a ndc2b DCLAMP
+D311 ndc2b ndc2c DCLAMP
+D312 ndc2c ndc2d DCLAMP
+R325 ndc2d 0 470
+DF302 vp149 na2 LEDP873
+R315 na2 nr2 470
+VS2 nr2 nc2 DC 0
+RCV2 cv34 ncv2 1m
+
+* ---- LED current -> LDR resistance (P873-class CdS photocell) ----
+* Same power law as netlists/klm62-cv.cir (keep the two boards consistent):
+*   R = R0 * (I_led / 1 mA)^-gamma,  R0 = 15k, gamma = 0.8, clamped [1k, 1M].
+* v(rmon1)/v(rmon2) read out the two LDR resistances in ohms.
+BR1 rmon1 0 V = min(1e6, max(1e3, 15e3*pow(max(i(VS1),1e-12)/1e-3, -0.8)))
+BR2 rmon2 0 V = min(1e6, max(1e3, 15e3*pow(max(i(VS2),1e-12)/1e-3, -0.8)))
+
+* ---- VCA1 audio path ----
+R301 in37 nsg1a 22k
+R302 nsg1a 0 3.3k
+XF301 nsg1a nsg1b P873D R={rldr1}
+C301 nsg1b ninv1 1u
+R306 ninv1 nm1 22k
+RVR301 nm1 out1 {max(100k*vr1,1)}
+XOP1 0 ninv1 out1 opamp
+R309 out1 out38 470
+
+* ---- VCA2 audio path (VCA1 out normalled into VCA2 in) ----
+R310 out38 nsg2a 22k
+R326 nsg2a 0 3.3k
+XF302 nsg2a nsg2b P873D R={rldr2}
+C302 nsg2b ninv2 1u
+R314 ninv2 nm2 22k
+RVR302 nm2 out2 {max(100k*vr2,1)}
+* rev-4 cap across the whole feedback (R314+VR302); "47P" read is a GUESS
+CF302 ninv2 out2 47p
+XOP2 0 ninv2 out2 opamp
+R317 out2 out35 220
+
+* ---- Phone amp (non-inverting, gain 1 + R333/R332 = 3.7) ----
+R331 phin41 nni3 10k
+R332 ninv3 0 10k
+XOP3 nni3 ninv3 nop3 opamp
+D313 nop3 nd313 DCLAMP
+D314 nd313 nb4 DCLAMP
+R335 nb4 vn149 3.3k
+Q303 vp149 nop3 ne3 QNOUT
+Q304 vn149 nb4 ne4 QPOUT
+R334 ne3 pho 10
+R336 ne4 pho 10
+R333 pho ninv3 27k
+R337 pho phout42 100
+
+.control
+* sweep covers the REAL CV range (panel max +5 V, GEG sustain +5.87 V) with
+* margin to 6 V; the 8 V driver-saturation plateau is unreachable in-circuit
+dc VC1 0 6 0.05
+wrdata vca_cv1.txt v(rmon1) i(VS1)
+dc VC2 0 6 0.05
+wrdata vca_cv2.txt v(rmon2) i(VS2)
+dc VPH -40 40 0.25
+wrdata vca_phdc.txt v(phout42)
+ac dec 200 10 20k
+wrdata vca_ac.txt vdb(out38) vdb(out35) vdb(phout42)
+.endc
+
+.end

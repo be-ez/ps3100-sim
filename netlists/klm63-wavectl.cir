@@ -1,0 +1,137 @@
+* KLM-63 WAVE FORM CONTROL (PS3100/3300) - SPICE reference
+*
+* Role: produces the two instrument-wide waveform rails
+*   pin 12 WFR ("ramp" rail)  - high for saw (+14.9V, Q101 clamp) and for
+*                               triangle (TRI ADJ wiper level ~11.3V);
+*                               0V in the pulse positions
+*   pin 13 WFD ("duty" rail)  - pulse-width level from a per-position
+*                               divider (~7.4 / 9.0 / 11.6V wide->narrow),
+*                               or the zener-offset PWM path (pin 16 +
+*                               PWM IN pin 15); 0V for triangle/saw
+* bussed to every KLM-64/64E signal generator card (their pins 7/6).
+*
+* Topology (full-res re-read; two corrections vs the first transcription):
+*   - steering diodes D104/D105/D106/D107 all land on node Y (-> WFD), NOT
+*     node X: the pin-16 column crosses the node-X rail dotless and runs on
+*     down to C101/R113/IC11b. Node X (-> WFR) receives only D102 (TRI ADJ
+*     wiper) and D101 (Q101 saw clamp).
+*   - the bottoms of R103/R105/R107/R109 form a separate "ladder return"
+*     rail clamped one diode (D103) above G2; it terminates at R109 and is
+*     NOT node Y. The clamp makes each selector input a stiff divider:
+*     energizing a pin with +14.9V puts its junction at
+*     Vf(D103) + (14.9 - Vf)*Rbot/(Rtop + Rbot), diode-ORed onto node Y.
+*   - Q101 (PNP, emitter +14.9V) collector ties to the WFR OUTPUT net: saw
+*     select (pin 11 pulled low) hard-clamps WFR to +14.9V, overriding the
+*     IC11a follower (whose ~20mA sink limit is modeled by ROUT below).
+*     D101 lifts node X too, so the follower input tracks the clamp.
+*   - pin 16 path: R110 39K to junction J; D107 J->node Y; D108 (anode at
+*     J) cathode-to-cathode with zener D110 (Zd 5.1V 3%), then R116 33K to
+*     the PWM node (pin 15 direct + R112 150K to -14.9V): J sits one
+*     zener+diode above the PWM level - continuous pulse-width control.
+*
+* Panel-drive assumption (switch itself is not on this sheet): the selector
+* energizes the selected pin with +14.9V for triangle/pulse positions
+* (required for the dividers to mean anything) and grounds pin 11 in the
+* saw position (required to turn the PNP on; +14.9V on pin 11 would do
+* nothing). Unselected pins float.
+*
+* Params: sel* = 1 energizes that position; tri_adj = TRI ADJ wiper (1 =
+* top = highest WFR); vpwm/pwm_on = PWM IN drive; dyn = 1 replaces the
+* pin-19 static drive with a 0->14.9V pulse (1ms on, 61ms off) for
+* attack/release transients; rl_* = output load test hooks.
+.param sel_tri=0 sel_saw=0 sel_w=0 sel_m=0 sel_n=0 sel_x=0 tri_adj=0.5
++ vpwm=0 pwm_on=0 dyn=0 dynp=0 rl_wfr=1e9 rl_wfd=1e9
+
+VCC vcc 0 14.9
+VEE vee 0 -14.9
+
+* --- panel switch (see assumption above): 1 ohm closed, 1e12 open ---
+RSW14 vcc p14 {1 + (1-sel_tri)*1e12}
+RSW11 p11 0   {1 + (1-sel_saw)*1e12}
+RSW19 vcc p19 {1 + (1-sel_w)*1e12}
+RSW18 vcc p18 {1 + (1-sel_m)*1e12}
+RSW17 vcc p17 {1 + (1-sel_n)*1e12}
+RSW16 vcc p16 {1 + (1-sel_x)*1e12}
+VPWM npwms 0 {vpwm}
+RSWPW npwms pwm {1 + (1-pwm_on)*1e12}
+* dynamic-selection hook (pin 19)
+VDYN ndyn 0 PULSE(0 14.9 1m 1u 1u 60m 10)
+RDYN ndyn p19 {1 + (1-dyn)*1e12}
+* dynamic PWM test hook (0 -> 5V step on the PWM node at 1 ms)
+VDYNP ndynp 0 PULSE(0 5 1m 1u 1u 60m 10)
+RDYNP ndynp pwm {1 + (1-dynp)*1e12}
+
+* --- triangle chain: R102 -> VR101 (TRI ADJ) -> R103 -> ladder return ---
+R102 p14 nvt 470
+RVRA nvt nw {max(4.7k*(1-tri_adj),1)}
+RVRB nw nr3 {max(4.7k*tri_adj,1)}
+R103 nr3 lad 7.5k
+D102 nw nx DSS
+
+* --- saw clamp: Q101 2SA733K, collector on the WFR output net ---
+R101 p11 nb 10k
+Q101 wfr nb vcc QA733
+D101 wfr nx DSS
+
+* --- ladder return rail, one diode above G2 ---
+D103 lad 0 DSS
+
+* --- pulse-width dividers, diode-ORed onto node Y ---
+R104 p19 j19 5.6k
+R105 j19 lad 5.6k
+D104 j19 ny DSS
+R106 p18 j18 3.9k
+R107 j18 lad 6.2k
+D105 j18 ny DSS
+R108 p17 j17 1.8k
+R109 j17 lad 6.8k
+D106 j17 ny DSS
+
+* --- pin 16 / PWM path ---
+R110 p16 j16 39k
+D107 j16 ny DSS
+D108 j16 nk DSS
+* D110: zener, cathode facing D108's cathode; breakdown passes J -> PWM
+D110 nza nk DZ51
+R116 nza pwm 33k
+R112 pwm vee 150k
+
+* --- rail smoothing ---
+C102 nx 0 0.047u
+R117 nx 0 1meg
+C101 ny 0 0.047u
+R113 ny 0 1meg
+
+* --- WFR buffer: IC11a (1/2 1458) unity follower -> pin 12 ---
+XICA nx wfr wfr OPA1458
+RLR wfr 0 {rl_wfr}
+
+* --- WFD buffer: IC11b + Q102 2SC945K emitter follower -> pin 13.
+* Feedback from the emitter; D109 (anode at emitter) is the pull-down path;
+* R114 47R decouples the collector from +14.9V; R115 10k emitter load. ---
+XICB ny wfd nbq OPA1458
+R114 vcc ncq 47
+Q102 ncq nbq wfd QC945
+D109 wfd nbq DSS
+R115 wfd 0 10k
+RLD wfd 0 {rl_wfd}
+
+* 1458 half: swing-limited to +-13.5V; ROUT 1.4k stands in for the ~20mA
+* output current limit so the Q101-vs-IC11a saw-mode contention resolves at
+* realistic levels (a stiff ideal opamp would sink amps there)
+.subckt OPA1458 inp inn out
+BOP int 0 V = 13.5*tanh(1e5/13.5*(v(inp)-v(inn)))
+ROUT int out 1.4k
+.ends
+
+.model QC945 NPN(IS=10f BF=300 VAF=100)
+.model QA733 PNP(IS=10f BF=250 VAF=100)
+.model DSS D(IS=2.5n N=1.7)   ; 1S1588-class small-signal Si (types unmarked)
+.model DZ51 D(IS=10f BV=5.1 IBV=1m)   ; "Zd 5.1V 3%"
+
+.control
+op
+wrdata wavectl_op.txt v(wfr) v(wfd) v(nx) v(ny) v(lad)
+.endc
+
+.end

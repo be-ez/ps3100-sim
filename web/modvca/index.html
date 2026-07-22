@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS-3100 MOD-VCA - KLM-63 in the browser</title>
+<link rel="stylesheet" href="../lib/panel.css">
+</head>
+<body>
+
+<main class="room">
+
+  <section class="unit" aria-label="PS-3100 mod vca panel">
+
+    <div class="panel">
+
+      <header class="panel-head">
+        <div class="badge">
+          <span class="badge-model">PS&#8209;3100</span>
+        </div>
+        <div class="badge-sub">POLYPHONIC SYNTHESIZER &middot; MOD&#8209;VCA / MG2 &middot; KLM&#8209;63</div>
+        <div class="power-block">
+          <span class="lamp power-lamp" id="power-lamp" aria-hidden="true"></span>
+          <button class="rocker" id="power" aria-pressed="false">
+            <span class="rocker-cap"></span>
+          </button>
+          <span class="legend-sm">POWER</span>
+        </div>
+      </header>
+
+      <div class="panel-controls">
+
+        <fieldset class="section section-resonator">
+          <legend>MOD&#8209;VCA</legend>
+          <div class="scope-wrap">
+            <canvas id="scope" class="scope" width="640" height="110" aria-label="MG2 triangle"></canvas>
+            <div class="lamps" aria-hidden="true">
+              <span class="glow-lamp" id="vac1"></span>
+            </div>
+          </div>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob" id="knob-cv" tabindex="0" role="slider"
+                   aria-label="MOD VCA CONT" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">MOD&nbsp;VCA&nbsp;CONT</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-mg">
+          <legend>MG&nbsp;2</legend>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-rate" tabindex="0" role="slider"
+                   aria-label="MG2 freq" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">FREQ&nbsp;CONT</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-depth" tabindex="0" role="slider"
+                   aria-label="Patch depth" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">DEPTH</span>
+            </div>
+          </div>
+          <div class="mg-switch">
+            <button class="rocker rocker-sm" id="patch-on" aria-pressed="false"><span class="rocker-cap"></span></button>
+            <span class="legend-sm">MG2&nbsp;&rarr;&nbsp;CONT</span>
+          </div>
+        </fieldset>
+
+      </div>
+    </div>
+
+    <div class="keybed" id="keybed" aria-label="keyboard"></div>
+  </section>
+
+  <footer class="caption">
+    <p>
+      The KLM&#8209;63 MOD&#8209;VCA and MG2 of the PS&#8209;3100: an F201 vactrol gain
+      cell (&minus;42&nbsp;dB dark to +2.8&nbsp;dB lit) and the board's own triangle-core LFO.
+      The scope draws MG2's asymmetric triangle straight from the model; flip
+      MG2&nbsp;&rarr;&nbsp;CONT to patch it into the VCA the way the panel pin-jacks do -
+      vactrol lag and all. The lamp is the F201 LED.
+    </p>
+    <p><a class="hub-link" href="../">&larr; All boards</a></p>
+  </footer>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

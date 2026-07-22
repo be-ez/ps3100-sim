@@ -1,0 +1,149 @@
+* KLM-62D BALANCE MIXER + AM (PS3100/PS3300) - SPICE reference
+*
+* Topology:
+*   - Balance Mixer (IC21, RC4558, was 1458): two inverting mixers.
+*     Upper: pin(28) -> R201 1k -> IC21a(-), fb R202 22k (was 47k), gain -22;
+*     out -> C201 10u -> R203 220 -> pin(30) UPPER OUT.
+*     Lower: pin(32) -> R207 1.2k -> IC21b(-), fb R208 22k (was 47k),
+*     gain -18.3; out -> C203 10u -> R209 220 -> pin(34) LOWER OUT.
+*     Bias: R204/R206 1.5M from both summing nodes to a mid node with
+*     R205 100k -> -14.9V and C202 10u AC bypass (DC offset trim; the mid
+*     node sits at ~-13.1V, pushing ~+0.19V of DC onto each output, blocked
+*     by C201/C203).
+*     KBD VOLUME BALANCE: external panel pot between UPPER OUT and LOWER
+*     OUT, wiper -> pin(24) AM SIG IN.
+*   - Amplitude Modulator (Q301 2SK30-GR, IC31 RC4558):
+*     pin(24) -> R301 15k -> node X shunted by R302 220 (~/69 attenuator,
+*     keeps the JFET channel in its linear region) -> Q301 channel in series
+*     -> C301 10u Ta -> IC31a(-), fb R304 100k. Stage gain = -R304/Rds.
+*     Mod: pin(23) -> VR303 100k LEVEL -> C303 0.1u -> R308 4.7M -> gate;
+*     gate bias via R309 4.7M from the divider -14.9V -> R310 33k (was 10k)
+*     -> VR302 10k BIAS -> G2 (operating point near pinch-off).
+*     Feedthrough cancel: C302 68p gate -> IC31a(+), VR304 470 CANCEL to G2.
+*     Ring balance (full-res re-read 2026-07-21): VR301 47k RING BAL is a
+*     three-terminal divider. Top terminal <- R303 100k <- pin(24) (dry);
+*     bottom terminal <- R305 22k <- IC31a out (modulated); wiper -> IC31b(-)
+*     summing node. With the wiper at virtual ground each side is just a
+*     series feed: dry R303 + a*47k, wet R305 + (1-a)*47k (a = rbal, wiper
+*     position from the dry top). Dry is inverted once, the JFET path twice
+*     -> they subtract: nulling the un-modulated carrier turns AM into
+*     balanced/ring modulation. IC31b fb R306 120k (was 150k);
+*     out -> R307 220 -> pin(26) AM SIG OUT.
+*     AM INTENSITY (full-res re-read 2026-07-21): external panel pot drawn
+*     as a two-terminal rheostat (wiper arrow unconnected) directly between
+*     the pin(24) dry node and the pin(26) output node - NOT through R303,
+*     which feeds only VR301. Min resistance ties pin 26 to pin 24.
+*   - Power block (R1..R6 10R, C1..C6 100u -> [1..6] +-14.9V, G1/G2/G3):
+*     not simulated; ideal-opamp VCVS stages don't draw supply current, so
+*     only the -14.9V rail (bias networks) is instantiated. All G1/G2/G3
+*     domains collapse to SPICE node 0.
+*
+* ASSUMED:
+*   - Q301 2SK30-GR SPICE parameters: VTO=-1.5, BETA=1.778m (Idss=4 mA,
+*     mid of the GR-rank 2.6..6.5 mA bin); junction caps ~ datasheet Ciss/Crss.
+*   - KBD VOLUME BALANCE panel pot: 100k linear (value not on this sheet).
+*   - AM INTENSITY panel pot VALUE: 50k (no value on this sheet; the panel
+*     block diagram, page 0023, may show it). The rheostat WIRING itself
+*     (pin 24 dry node -> pin 26) is CONFIRMED by the 2026-07-21 full-res
+*     re-read - no longer assumed.
+* CONFIRMED by the full-res re-read (previously assumed): VR301 RING BAL is
+*   a three-terminal divider (dry top via R303 / wet bottom via R305 / wiper
+*   to the IC31b summing node), NOT a rheostat in series with R303.
+*   - pin(26) external load: 1Meg (next board's input not on this sheet).
+*
+* Parameters (rewritten by tests/test_balance_am_spice.py, keep on ONE line):
+*   bal       : KBD VOLUME BALANCE 0..1 (1 = wiper at UPPER OUT)
+*   lvl       : VR303 LEVEL 0..1;  bias : VR302 BIAS 0..1 (1 = most negative
+*               gate, deepest pinch-off; 0.4110 nulls the carrier at rbal=0.5)
+*   rbal      : VR301 RING BAL 0..1 (wiper position from the dry/R303 top:
+*               dry feed R303+47k*rbal, wet feed R305+47k*(1-rbal))
+*   cancel    : VR304 CANCEL 0..1
+*   intensity : AM INTENSITY 0..1 (1 = full modulated signal)
+*   acu/acl   : AC magnitudes of the upper/lower sources (AC analysis)
+*   acar,fcar / alow,flow / amod,fmod : SIN amplitude+freq of the upper /
+*               lower / mod sources (transient analysis)
+.param bal=0.5 lvl=0.05 bias=0.40 rbal=0.5 cancel=0.5 intensity=1 acu=1 acl=0 acar=0.02 fcar=2000 alow=0 flow=1000 amod=0 fmod=200
+
+* ideal opamp: VCVS, open-loop gain 1e6 (supplies/limiting not modeled;
+* both decks in this repo share this idealization -> the DSP referee sees
+* neither 4558 GBW nor rail clipping. Deferred: rail limiting.)
+.subckt opamp inp inn out
+E1 out 0 inp inn 1e6
+.ends
+
+* Q301 2SK30(A) GR rank -- ASSUMED mid-spread model (see header):
+* BETA = Idss/VTO^2 = 4mA/2.25 = 1.778m; triode-region conductance at
+* Vds->0 is 2*BETA*(Vgs-VTO), i.e. Rds(on) ~= 190 ohm at Vgs=0.
+.model JSK30 NJF(VTO=-1.5 BETA=1.778m IS=1e-14 CGS=6p CGD=2p)
+
+* --- rails ---------------------------------------------------------------
+VNEG vneg 0 DC -14.9
+
+* --- sources -------------------------------------------------------------
+VUP  up  0 DC 0 AC {acu} SIN(0 {acar} {fcar})
+VLOW low 0 DC 0 AC {acl} SIN(0 {alow} {flow})
+VMOD mod 0 DC 0 AC 0    SIN(0 {amod} {fmod})
+
+* --- balance mixer (IC21) ------------------------------------------------
+R201 up  nsu 1k
+R202 nsu uout 22k
+XOPU 0 nsu uout opamp
+R207 low nsl 1.2k
+R208 nsl lout 22k
+XOPL 0 nsl lout opamp
+* bias network (DC only; C202 bypasses it at AC)
+R204 nsu nb 1.5Meg
+R206 nsl nb 1.5Meg
+R205 nb vneg 100k
+C202 nb 0 10u
+
+* output legs + external KBD VOLUME BALANCE pot (wiper w = pin 24)
+C201 uout cu1 10u
+R203 cu1 pin30 220
+RPBU pin30 w {max(100k*(1-bal),1)}
+RPBL w pin34 {max(100k*bal,1)}
+R209 cl1 pin34 220
+C203 lout cl1 10u
+
+* --- amplitude modulator -------------------------------------------------
+* input attenuator + JFET channel into the IC31a virtual ground
+R301 w x 15k
+R302 x 0 220
+J301 x ng ns JSK30
+C301 ns nsuma 10u
+R304 nsuma vouta 100k
+XOP31A ncanc nsuma vouta opamp
+
+* mod drive + gate bias
+RV303A mod nlw {max(100k*(1-lvl),1)}
+RV303B nlw 0 {max(100k*lvl,1)}
+C303 nlw nc3 0.1u
+R308 nc3 ng 4.7Meg
+R310 vneg nbt 33k
+RV302A nbt nbw {max(10k*(1-bias),1)}
+RV302B nbw 0 {max(10k*bias,1)}
+R309 nbw ng 4.7Meg
+
+* feedthrough cancel (C302/VR304 -> IC31a non-inverting input)
+C302 ng ncanc 68p
+RV304 ncanc 0 {max(470*cancel,1)}
+
+* ring-balance summer (IC31b); VR301 = divider, wiper into the summing node
+R303 w nrb 100k
+RV301A nrb nsumb {max(47k*rbal,1)}
+RV301B nsumb nrb2 {max(47k*(1-rbal),1)}
+R305 vouta nrb2 22k
+R306 nsumb voutb 120k
+XOP31B 0 nsumb voutb opamp
+
+* output leg + external AM INTENSITY pot (rheostat pin24 dry node -> pin 26)
+R307 voutb out26 220
+RINT w out26 {max(50k*intensity,1)}
+RLOAD out26 0 1Meg
+
+.control
+ac dec 200 10 20k
+wrdata ac_out.txt vdb(uout) vdb(lout) vdb(w) vdb(out26)
+.endc
+
+.end

@@ -1,0 +1,92 @@
+* KLM-62D RELEASE CONTROL (PS3100/3300) - SPICE reference
+*
+* Role: one utility board per instrument generating the shared gate-release
+* control level on pin 5 ("TO GATE RELEASE TERMINAL") from two panel switch
+* lines, RELEASE (pin 6, "GND ON") and HD = half damper (pin 4, "GND ON").
+*
+* Topology (all junctions re-verified on the ~500 dpi scan, 2026-07-21):
+*   - Output divider: +14.9 V (pin 1) -> R14 5.1k -> out (pin 5);
+*     R15 18k out -> G1. Unloaded level 14.9*18/23.1 = +11.61 V.
+*   - Q1 (2SC945K) collector = out, emitter = G1: FULL pull-down.
+*     Base node: R10 100k from the HD node, R11 100k and D1 (cathode at the
+*     base, anode at G1 - negative clamp) to G1.
+*   - Q2 (2SC945K) emitter = G1, collector -> R13 3.9k -> VR1 4.7k rheostat
+*     ("HALF D ADJ") -> out: PARTIAL pull-down (half-damp level, trimmed
+*     +5.75..+7.94 V ideal-sat by VR1).
+*     Base node: R8 100k from the RELEASE node, R12 100k and D2 (cathode at
+*     the base) to G1.
+*   - RELEASE node (pin 6): R7 100k pull-up to +14.9, R8 to Q2 base branch,
+*     R9 100k down to the HD node. No capacitor (fast node).
+*   - HD node (pin 4): C1 1u/50V electrolytic, + terminal to the +14.9 V
+*     rail (rev-triangle part), i.e. an AC ground at the HD node: every
+*     Q1 (full-damp) state change is slewed ~50..90 ms; the cap line CROSSES
+*     the RELEASE-node wire WITHOUT a junction (dot-verified; a dot there
+*     would short R9 out). R10 100k to Q1 base.
+*   - Grounds: G1 sheet domain -> SPICE node 0.
+*
+* Switching logic ("GND ON" = panel switch shorts the pin to ground):
+*   RELEASE grounded (any HD):   Q1, Q2 off -> out = 11.61 V  (full release)
+*   RELEASE open, HD grounded:   Q2 on only -> out ~ 5.9..8.1 V (half damp)
+*   both open (idle):            Q1 on (sat) -> out ~ 0.05 V   (damped)
+* The RELEASE/Q2 path has no cap: those edges are fast (< 1 ms). The C1 slew
+* applies to Q1 turning on/off (entering/leaving the fully-damped state).
+*
+* ASSUMED:
+*   - supply pin number "1" (single slanted stroke - guess; value +14.9 V
+*     is printed clearly)
+*   - D1/D2 device types not marked: 1S1588-class small-signal Si
+*   - 2SC945K SPICE parameters: house nominal mid-spread (BF=300, VAF=100)
+*   - panel switch on-resistance 2 ohm (switch + wiring, order of magnitude)
+*   - C1 has no printed designator ("C1" is ours)
+*
+* Parameters (rewritten by tests/test_relctl_spice.py, keep on ONE line):
+*   rel0/rel1 : RELEASE switch state before/after t=trel (1 = pin 6 grounded)
+*   hd0/hd1   : HD switch state before/after t=thd      (1 = pin 4 grounded)
+*   halfd     : VR1 HALF D ADJ rheostat position 0..1 (1 = full 4.7k in)
+.param rel0=0 rel1=0 trel=1 hd0=0 hd1=0 thd=1 halfd=1
+
+* 2SC945-class NPN and 1S1588-class diode, house nominal models
+.model QC945 NPN(IS=10f BF=300 VAF=100 CJC=4p CJE=8p TF=0.4n)
+.model DSIG D(IS=2.5n N=1.7)
+.model SWPANEL SW(VT=0.5 VH=0.1 RON=2 ROFF=1e9)
+
+* --- rails ---------------------------------------------------------------
+VCC vcc 0 DC 14.9
+
+* --- panel switches (pins 6 / 4 shorted to ground when engaged) ----------
+VRELC crel 0 PWL(0 {rel0} {trel} {rel0} {trel+10u} {rel1})
+VHDC  chd  0 PWL(0 {hd0}  {thd}  {hd0}  {thd+10u}  {hd1})
+SREL rel 0 crel 0 SWPANEL
+SHD  hd  0 chd  0 SWPANEL
+
+* --- RELEASE node (pin 6) ------------------------------------------------
+R7 vcc rel 100k
+R8 rel qb2 100k
+R9 rel hd 100k
+
+* --- HD node (pin 4) -----------------------------------------------------
+C1 vcc hd 1u
+R10 hd qb1 100k
+
+* --- Q1 full pull-down ---------------------------------------------------
+R11 qb1 0 100k
+D1 0 qb1 DSIG
+Q1 out qb1 0 QC945
+
+* --- Q2 partial pull-down (HALF D) ---------------------------------------
+R12 qb2 0 100k
+D2 0 qb2 DSIG
+RVR1 out nvr {max(4700*halfd,1)}
+R13 nvr qc2 3.9k
+Q2 qc2 qb2 0 QC945
+
+* --- output divider (pin 5, TO GATE RELEASE TERMINAL) --------------------
+R14 vcc out 5.1k
+R15 out 0 18k
+
+.control
+tran 0.2m 1.0
+wrdata relctl_out.txt v(out) v(hd) v(rel)
+.endc
+
+.end

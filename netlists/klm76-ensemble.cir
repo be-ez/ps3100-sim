@@ -1,0 +1,259 @@
+* KLM-76 ENSEMBLE (PS-3100) - SPICE reference, audio path
+*
+* Topology (audio path, this deck's top level):
+*   pin 43 ENSEMBLE IN
+*     -> R401/R402 47k/47k input divider (-6 dB), R403 + C401 470p RF/first
+*        anti-alias pole (~13.8 kHz)
+*     -> IC-44a (4558): non-inverting pre-emphasis shelf, DC gain 1, HF gain
+*        1 + R405/R404 = 11; zero ~6.3 kHz (C403 1n series R404), pole pair
+*        ~72 kHz (R404*C403, R405*C402) - lifts the top octaves into the BBD
+*        to ride over BBD noise (there is NO compander on this board)
+*     -> IC-44b (4558): R406 22k / C404 470p second anti-alias pole
+*        (~15.4 kHz), follower -> drives BOTH BBD channels
+*     -> per channel: C410/C420 1u coupling, R411/R441 220, R412/R442 100k
+*        to the bias trim (R413/VR401/R414, R443/VR402/R444: DC only)
+*     -> MN3004 512-stage BBD, modeled BEHAVIORALLY as an ideal delay
+*        tau = 256/fclk (lossless T line, exact e^(-s*tau) in AC); the real
+*        clock astable (Q401-Q404/Q406-Q409 2SC1215) and the CD4069 3-phase
+*        LFOs are transcribed as subcircuits below and characterized by
+*        transient analysis in tests/test_ensemble_spice.py
+*     -> reconstruction ladder: two 100k output loads (R420/R421), the two
+*        (complementary-clock) output pins summed through R422/R423 2.2k
+*        (clock feedthrough cancels in this sum; both pins carry the same
+*        audio, so they are collapsed onto one node here), then the 3-pole
+*        passive LPF C414 1n / R424 47k / C432 680p / R425 47k / C415 150p
+*        (dominant pole ~3.9 kHz)
+*     -> Q405/Q410 2SA733 emitter follower (R426/R456 47k to +14.9)
+*     -> C430/C431 0.033u + R464/R434 100k wet legs (48 Hz HPF) into the
+*        IC-32 (1/2 4558) inverting mixer, R466 100k feedback;
+*        dry leg R465 180k (gain -0.556); R467 220 build-out -> pin 44.
+*
+* Rails: +15/-15 in through R468/R469/R470 10R -> +/-14.9 V; modeled as
+* ideal +/-14.9 V sources here (drop is < 0.1% at board currents, and the
+* audio path is fully decoupled from the rails via ideal opamps).
+*
+* UNCERTAIN / ASSUMED:
+*   [U1] IC-44 first-stage node assignment: the scan flags R403/R404/R405/
+*        C403 placement as congested. Chosen: non-inverting shelf with
+*        R405 22k || C402 100p feedback, R404 2.2k + C403 1n ground leg,
+*        R403 1k in series with the + input. DC gain 1 keeps the wet/dry
+*        mixer balance sensible (wet ~= 0.5x2 vs dry 0.556 at the summing
+*        node), which a x11 flat stage would not.
+*   [U2] C414/C424 series membership is a guess per the scan; placed as the
+*        first shunt of the reconstruction ladder.
+*   [U3] R427/R457 22k assumed as emitter return of the 2SA733 follower to
+*        ground; C416/C426 1n assumed as emitter-node shunt (both choices
+*        are AC-negligible: follower Zout ~340R -> pole ~470 kHz).
+*   [U4] RESOLVED by full-res scan re-read (2026-07-21): collector loads
+*        R416/R419 1.8k to the G2 (0 V) rail confirmed; bases return through
+*        the 130k DIRECTLY (no series diode, no B-E clamp) to the FM line.
+*        D403/D406 are catch diodes from the Q401/Q404 buffer emitters back
+*        to the collector nodes (clock-driver pull-down); D404/D405 are
+*        series emitter diodes Q402/Q403 -> -14.9 V (level shift). fclk sits
+*        in the tens of kHz as required by the MN3004.
+*   [U5] RESOLVED by re-read: Q401/Q404 have NO emitter pull resistors; each
+*        emitter drives the MN3004 clock pin, with D403/D406 providing the
+*        pull-down through the saturated core transistor. Modeled with the
+*        CP input capacitance as load (does not affect the clock law).
+*   [U6] RESOLVED by full-res scan re-read (2026-07-21): D401/D402 + C411 +
+*        R415 are NOT in the LFO path at all - they are the MN3004 VGG bias
+*        network (R415 100k from G2 to the VGG pin, D401+D402 in series to
+*        the -14.9 V rail -> VGG = -14.9 + 2*Vf ~ -13.7 V, C411 10u smooth-
+*        ing; mirrored by R445/D407/D408/C421 on IC-42). The LFO->VCO
+*        coupling is a DIRECT DC connection of ONE ring phase (IC-43 pin 2
+*        for ch 1, pin 8 for ch 2) to the common top of the two 130k base
+*        resistors: no coupling cap, no divider, no diode-OR. The CD4069
+*        runs on 0/+14.9 V ([6]/G1), so the FM node sits at the ring mid-
+*        point (~+7.45 V) and swings the full clipped ring amplitude.
+*   [U7] Dry mixer leg R465 180k assumed fed from pin 43 directly.
+*   [U8] 2SC1215/2SA733/1S1588 SPICE models are generic small-signal sets
+*        (datasheet order of magnitude); the clock law depends on them only
+*        through Vbe/Vsat (~% level).
+*   [U9] The scan lists "C439" both as ch-2 input decoupling 100n and as a
+*        supply 100u - a scan-sheet duplication; supply electrolytics are
+*        not modeled (ideal rails).
+*
+* Behavioral BBD notes:
+*   - ideal delay, unity insertion gain (G1/G2 params allow muting a
+*     channel in tests); no zero-order-hold sinc, no clock feedthrough
+*     (cancelled by the balanced output sum in hardware), no compander
+*     (none fitted on this board).
+*
+* Params: TD1/TD2 = per-channel BBD delay (256/fclk), G1/G2 channel gains.
+.param TD1=5.004m TD2=5.004m G1=1 G2=1
+
+* ideal opamp: VCVS, open-loop gain 1e6 (house style, klm62-resonator.cir)
+.subckt opamp inp inn out
+E1 out 0 inp inn 1e6
+.ends
+
+* generic small-signal BJT / diode models [U8]
+.model Q2SC1215 NPN(IS=1e-14 BF=180 VAF=100 RB=50 TF=0.5n CJC=4p CJE=8p)
+.model Q2SA733 PNP(IS=1e-14 BF=200 VAF=80 RB=50 TF=0.6n CJC=6p CJE=10p)
+.model D1S1588 D(IS=2.5n RS=1 CJO=2p TT=4n)
+
+* MN3004 512-stage BBD, behavioral: exact ideal delay e^(-s*TD), gain G.
+* Lossless T line, matched far-end termination -> no reflections; verified
+* exact in AC (group delay ripple < 1e-8 s).
+.subckt bbd in out PARAMS: TD=5.004m G=1
+Ein tin 0 in 0 1
+T1 tin 0 tout 0 Z0=1k TD={TD}
+Rt tout 0 1k
+Eout out 0 tout 0 {G}
+.ends
+
+* Clock astable VCO (one channel: Q401-Q404 2SC1215, per full-res re-read
+* [U4][U5][U6]). Runs between G2 (0 V, collector loads) and -14.9 V
+* (emitters through D404/D405). fm = FM line: the two 130k base-recovery
+* resistors return here; on the board it is wired DIRECTLY (DC) to one
+* CD4069 ring output, so its static level is the ring midpoint ~+7.45 V
+* and it swings the full clipped ring amplitude. DC-swept by tests over
+* the ring output range to extract the clock law fclk(Vfm).
+* cp1/cp2 = complementary clock outputs (Q401/Q404 emitter pulls up,
+* D403/D406 catch diodes pull down through the saturated core transistor);
+* loaded here by the MN3004 CP input capacitance. vnn = -14.9 rail.
+* Hand theory: half period = RB*C*ln((Vfm+Vth+dV)/(Vfm+Vth)) with RB=130k
+* C=150p, Vth = 14.9-Vd-Vbe ~ 13.65, dV ~ 14.2 (collector swing)
+* -> f(+7.45) ~= 50 kHz, ~1.85 kHz/V, near-linear over the ring swing.
+.subckt clkvco fm cp1 cp2 vnn
+RC1 0 c1 1.8k
+RC2 0 c2 1.8k
+Q402 c1 b1 e402 Q2SC1215
+D404 e402 vnn D1S1588
+Q403 c2 b2 e403 Q2SC1215
+D405 e403 vnn D1S1588
+C412 c1 b2 150p
+C413 c2 b1 150p
+RB1 fm b1 130k
+RB2 fm b2 130k
+Q401 0 c1 cp1 Q2SC1215
+D403 cp1 c1 D1S1588
+Q404 0 c2 cp2 Q2SC1215
+D406 cp2 c2 D1S1588
+CL1 cp1 vnn 330p
+CL2 cp2 vnn 330p
+.ends
+
+* CD4069 inverter, behavioral: gain -30 at midpoint, tanh saturation to
+* ~0.2 V of the rails (0 / +14.9: IC-43 runs on +14.9 V [6] and G1 per the
+* scan), Rout 400 (typ unbuffered 4069).
+.subckt inv4069 in out
+B1 outi 0 V = 7.45 - 7.2*tanh(30.0*(v(in)-7.45)/7.2)
+Rout outi out 400
+.ends
+
+* Three-stage RC phase-shift ring LFO (one half of IC-43).
+* Each stage: 1M series (R429/R431/R433 resp. R459/R461/R463), C || 3.3M
+* inverter feedback (C417-C419 0.039u + R428/R430/R432 for LFO A;
+* C427-C429 0.047u + R458/R460/R462 for LFO B). Full-res re-read confirms
+* each C || 3.3M network bridges its inverter input->output (ring of three
+* inverting integrators), with the 1M in series between stages.
+* Linear theory: pole 1/(2*pi*Rf*C), 60 deg/stage -> f = sqrt(3)/(2*pi*Rf*C)
+* (2.14 Hz A / 1.78 Hz B); rail-clipping (excess gain 3.3*cos60 = 1.65)
+* raises the measured rate ~1.4x: 3.06 / 2.54 Hz, phases 120 deg apart.
+.subckt lfo3 p1 p2 p3 PARAMS: C=0.039u
+X1 n1 p1 inv4069
+RA1 n1 p1 3.3Meg
+CA1 n1 p1 {C}
+RS1 p1 n2 1Meg
+X2 n2 p2 inv4069
+RA2 n2 p2 3.3Meg
+CA2 n2 p2 {C}
+RS2 p2 n3 1Meg
+X3 n3 p3 inv4069
+RA3 n3 p3 3.3Meg
+CA3 n3 p3 {C}
+RS3 p3 n1 1Meg
+.ends
+
+* ================= audio path (top level, AC analysis) ==================
+VP vp 0 DC 14.9
+VN vn 0 DC -14.9
+
+Vin in 0 AC 1
+
+* input divider + first anti-alias pole
+R401 in n401 47k
+R402 n401 0 47k
+R403 n401 n403 1k
+C401 n403 0 470p
+
+* IC-44a pre-emphasis shelf [U1]
+XOP1 n403 nfb1 n405 opamp
+R405 n405 nfb1 22k
+C402 n405 nfb1 100p
+R404 nfb1 nc4 2.2k
+C403 nc4 0 1000p
+
+* IC-44b second anti-alias pole + follower
+R406 n405 n406 22k
+C404 n406 0 470p
+XOP2 n406 pre pre opamp
+
+* ---- channel 1 ----
+C410 pre nb1a 1u
+R411 nb1a bbd1in 220
+R412 bbd1in nbw1 100k
+* bias trim chain (DC only; wiper modeled at midpoint)
+R413 0 nb1t 4.7k
+VR401A nb1t nbw1 500
+VR401B nbw1 nb1u 500
+R414 nb1u vn 4.7k
+C438 nbw1 0 100n
+XBBD1 bbd1in bbd1o bbd TD={TD1} G={G1}
+* output loads (two pins collapsed onto bbd1o, see header)
+R420 bbd1o vn 100k
+R421 bbd1o vn 100k
+R422 bbd1o l1a 2.2k
+R423 bbd1o l1a 2.2k
+C414 l1a 0 1000p
+R424 l1a l1b 47k
+C432 l1b 0 680p
+R425 l1b l1c 47k
+C415 l1c 0 150p
+Q405 vn l1c e405 Q2SA733
+R426 vp e405 47k
+R427 e405 0 22k
+C416 e405 0 1000p
+C430 e405 m1 0.033u
+R464 m1 nsum 100k
+
+* ---- channel 2 (mirror) ----
+C420 pre nb2a 1u
+R441 nb2a bbd2in 220
+R442 bbd2in nbw2 100k
+R443 0 nb2t 4.7k
+VR402A nb2t nbw2 500
+VR402B nbw2 nb2u 500
+R444 nb2u vn 4.7k
+C439 nbw2 0 100n
+XBBD2 bbd2in bbd2o bbd TD={TD2} G={G2}
+R450 bbd2o vn 100k
+R451 bbd2o vn 100k
+R452 bbd2o l2a 2.2k
+R453 bbd2o l2a 2.2k
+C424 l2a 0 1000p
+R454 l2a l2b 47k
+C433 l2b 0 680p
+R455 l2b l2c 47k
+C425 l2c 0 150p
+Q410 vn l2c e410 Q2SA733
+R456 vp e410 47k
+R457 e410 0 22k
+C426 e410 0 1000p
+C431 e410 m2 0.033u
+R434 m2 nsum 100k
+
+* ---- output mixer (IC-32, 1/2 4558) ----
+R465 in nsum 180k
+XMIX 0 nsum mo opamp
+R466 nsum mo 100k
+R467 mo out 220
+RL out 0 100k
+
+.control
+ac lin 3000 20 12020
+wrdata ens_ac.txt vdb(out) vdb(pre) vdb(bbd1in) vdb(bbd1o) vdb(e405)
+.endc
+
+.end

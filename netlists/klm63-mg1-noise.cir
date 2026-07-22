@@ -1,0 +1,237 @@
+* KLM-63 MG1 + NOISE GENERATOR (PS3100/PS3300) - SPICE reference
+*
+* Mixed-fidelity model:
+*   FAITHFUL (component-for-component from the scan):
+*     - rate-CV exponential converter: IC31a servo + Q301/Q302 2SC945 pair,
+*       R305 10M reference (I_ref = 14.9/10M ~= 1.49 uA), R343 1.8k CV shunt,
+*       matrix inputs R301 56k (FREQ CONT I, pin 43), R302 100k (FREQ CONT II,
+*       pin 44), R303 470k (FREQ ADJ wiper), R304 330k bias
+*     - triangle buffers IC32 (LM301A follower, R313/C304 feedback) and IC33
+*       (unity inverter R316/R317), pin 34/35 build-outs R314/R315, R318/R319
+*     - sine shaper: D307/D308 + R320/R321 into IC34a (R322 || C313 feedback,
+*       R325 bias from -14.9V, VR303/R326 offset network). Wiring CONFIRMED
+*       by a full-resolution scan re-read (2026-07-21): both diodes are drawn
+*       anode-at-buffer / cathode-at-resistor into the one summing node, so
+*       the 2x-rate rectified output is genuine, not a misread
+*     - square comparator IC34b with R327 input (from the IC32 output node,
+*       confirmed at full res), R328/R329 build-out (pin 36)
+*     - white-noise amps (full-res re-read 2026-07-21): IC35a NON-INVERTING
+*       (junction node direct to +input; R332 feedback with D304/D305 clamps;
+*       gain leg C310 -> R333 -> VR304 rheostat to G3 = the NOISE GAIN trim),
+*       then C311 coupling into IC35b (-R335/R334, D306 clamp)
+*     - pink filter IC31b: C312/R337 input, feedback ladder C314 ||
+*       (C315+R338) || (C316+R339) || (C317+R340), R341 build-out (pin 42)
+*   BEHAVIORAL / RECONSTRUCTED (scan region congested or semiconductor-level;
+*   every instance flagged inline):
+*     - the triangle-core current switch (Q303 2SA564R / Q304 2SC945,
+*       D302/D303 steering, R307/R309 2.2k, R342 1k, R308 10M) is an ideal
+*       B-source that steers +/- the sensed expo-converter collector current
+*       into C302; the Q306 2SA733 / Q305 2SC945 push-pull buffer (R310 100k /
+*       R311 470k bias) is an ideal unity VCVS
+*     - the Schmitt hysteresis network is reconstructed: comparator = IC34b,
+*       tri via R327 10k, feedback RHYS 35.75k PANEL-ANCHORED: the panel
+*       block diagram
+*       prints the MG 1 OUT jack as 5VP-P, so pin 34 swings +/-2.5 V and
+*       Vth = 2.5*(3.2/2.2) = 40/11 = 3.636 V through the R314/R315 1k/2.2k
+*       build-out; RHYS = Vsat*R327/Vth = 13*10k*11/40 = 35.75k exactly
+*       (~7.27 Vpp core triangle). NOTE the full-res re-read retired the old
+*       27k justification: R328's struck value reads "2.7K", an ordinary
+*       output build-out revision, NOT a 27k hysteresis resistor; no
+*       hysteresis resistor is drawn around IC34b at all (the real Schmitt
+*       lives in the unmodeled Q303/Q304 current-switch core), so the panel
+*       5VP-P print is the only independent anchor for this value
+*     - Q307 2SC644 reverse-biased E-B avalanche junction is a behavioral
+*       source VNZ (DC 0, AC 1 for filter validation, TRNOISE for transient);
+*       R330/C309 bias kept topologically but inert into the ideal source
+*     - TRI ADJ (VR302 100k + R312 680k) enters as a charge-current offset
+*       parameter itrim, NOT as a resistor on the timing cap: the real trim
+*       acts on the (unmodeled) current switch; a 680k resistor tied to the
+*       cap node would visibly bend the ramps, which the scan does not support
+*
+* LFO hand theory (validated in tests/test_mg1_noise_spice.py):
+*   Vcv  = (vfc1/56k + vfc2/100k + 14.9/330k - 14.9*fadj/470k) / Gtot,
+*          Gtot = 1/1.8k + 1/56k + 1/100k + 1/470k + 1/330k
+*   Ic   = I_ref * exp(Vcv/VT)         (I_ref = 1.49 uA, servo-referenced)
+*   f    = Ic / (4 * C302 * Vth),      Vth = 13 * 10k/35.75k = 3.636 V
+*   defaults below -> ~7.4 Hz; ~1.69 octave/V at pin 43 (0.59 V/oct)
+*
+* Parameters (rewritten by the tests; keep on ONE line):
+*   vfc1/vfc2 : FREQ CONT I / II pin voltages in volts (panel pot wiring and
+*               span live on another sheet - cross-board, see model doc)
+*   fadj      : FREQ ADJ trimmer position 0..1 (1 = wiper at -14.9V, slowest)
+*   voff      : sine OFFSET trimmer position 0..1 (0 = wiper at G3)
+*   ng        : NOISE GAIN VR304 rheostat position 0..1 (1 = 0 ohm, loudest)
+*   oscon     : 1 = LFO oscillates (use tran ... uic); 0 = LFO frozen so the
+*               deck has a DC operating point for AC analysis of the noise path
+*   itrim     : TRI ADJ as a charge-current offset in amps (0 = symmetric)
+.param vfc1=0 vfc2=0 fadj=0.5 voff=0 ng=0.5 oscon=1 itrim=0
+
+* ideal opamp: VCVS, open-loop gain 1e6 (supplies/limiting not modeled)
+.subckt opamp inp inn out
+E1 out 0 inp inn 1e6
+.ends
+
+* nominal mid-spread models (as netlists/klm62-cv.cir)
+.model QC945 NPN(IS=10f BF=300 VAF=100)
+.model DSIG D(IS=10f)
+
+* boxed [7]/[8] +/-14.9 V rails (RC-filtered on page 0006; ideal here)
+VP7 vp149 0 14.9
+VN8 vn149 0 -14.9
+
+* ================= MG1: rate CV -> exponential current ==================
+* FREQ CONT pins driven as ideal voltage params (panel side is cross-board)
+VFC1 p43 0 {vfc1}
+VFC2 p44 0 {vfc2}
+R301 p43 cvn 56k
+R302 p44 cvn 100k
+* FREQ ADJ VR301 100k: ASSUMED G3-to--14.9V trimmer, wiper via R303 470k
+* (scan wording ambiguous about which end R303/R304 serve; R304 330k is
+* ASSUMED to come from +14.9V so the trimmer brackets a usable rate range)
+RFA1 0 fadjw {max(100k*fadj,1)}
+RFA2 fadjw vn149 {max(100k*(1-fadj),1)}
+R303 fadjw cvn 470k
+R304 vp149 cvn 330k
+R343 cvn 0 1.8k
+
+* servo reference (same idiom as KLM-62D): IC31a holds the shared emitter
+* rail where Q302 (base grounded) sinks exactly I_ref = 14.9V/10M
+R305 vp149 nx 10Meg
+C301 nx no31a 0.001u
+XIC31A 0 nx no31a opamp
+R306 no31a rail 470
+Q302 nx 0 rail QC945
+D301 rail 0 DSIG
+* Q301: the expo output transistor; collector held at 0 V by the sense
+* source (Vce matches Q302's, cancelling the Early term)
+Q301 qc1 cvn rail QC945
+VSENS 0 qc1 DC 0
+
+* ================= MG1: triangle core (BEHAVIORAL switch) ===============
+* ideal steering of +/-Ic into C302; oscon=0 freezes it for AC decks
+BINT 0 tri I = oscon*(-i(VSENS)*v(cmpo)/13.0 + itrim)
+C302 tri 0 0.1u
+RLEAK tri 0 1G       ; convergence aid only (4.8 nA worst case vs uA drive)
+* TRI ADJ VR302/R312 represented by itrim (see header)
+
+* Schmitt comparator = IC34b (also the square shaper); RHYS 35.75k is
+* PANEL-ANCHORED to the 5VP-P print at the MG 1 OUT jack (p0023): no
+* hysteresis resistor is on the scan, and 5 Vpp at pin 34 through the
+* 1k/2.2k build-out requires Vth = 13*10k/RHYS = 40/11 V (see header).
+* R327 taps the BUFFERED triangle (o32): CONFIRMED at full res - R327 and
+* D308 share the IC32 output node
+R327 o32 cmpin 10k
+RHYS cmpin cmpo 35.75k
+* integration aid: gives the regenerative flip a ~1 us timescale (a real
+* 4558 slews at ~1 V/us); without it ngspice's timestep collapses mid-flip
+CCMP cmpin 0 100p
+* +/-13 V saturation of a 4558 on +/-14.9 V rails; +1uV tilt breaks the
+* metastable all-zero start deterministically
+BCMP cmpo 0 V = 13.0*tanh(1000*(v(cmpin)+1u))
+R328 cmpo p36 3k
+R329 p36 0 680
+
+* ================= MG1: buffers and waveform outputs ====================
+* Q306/Q305 push-pull follower idealized (see header)
+EBUF tbuf 0 tri 0 1.0
+* IC32: follower with R313 || C304 DC feedback -> unity at LFO rates
+XIC32 tbuf m32 o32 opamp
+R313 o32 m32 470k
+C304 o32 m32 3p
+R314 o32 p34 1k
+R315 p34 0 2.2k
+* IC33: unity inverter
+R316 o32 m33 100k
+R317 m33 o33 100k
+C307 m33 o33 3p
+XIC33 0 m33 o33 opamp
+R318 o33 p35 1k
+R319 p35 0 2.2k
+* sine shaper: complementary triangles through D307/D308 into the IC34a
+* virtual ground, R325 bias current from -14.9V. Wiring CONFIRMED by the
+* full-res scan re-read: both diodes anode-at-buffer, cathodes via 100k
+* into the one summing node -> a diode-rounded rectified triangle at 2x
+* the LFO rate. This is what the hardware draws, not a transcription slip.
+* (Scan designators: D307 is fed by IC33, D308 by IC32.)
+D307 o33 sd1 DSIG
+R320 sd1 m34 100k
+D308 o32 sd2 DSIG
+R321 sd2 m34 100k
+R325 vn149 m34 750k
+XIC34A offw m34 o34a opamp
+R322 m34 o34a 220k
+C313 m34 o34a 100p
+* OFFSET VR303 47k: G3 - pot - R326 470k - -14.9V, wiper to +input
+RVO1 0 offw {max(47k*voff,1)}
+RVO2 offw ob {max(47k*(1-voff),1)}
+R326 ob vn149 470k
+R323 o34a p37 1k
+R324 p37 0 2.2k
+
+* ================= NOISE: white source and amps =========================
+* Full-res scan re-read (2026-07-21): the old "level trim between the amps"
+* reconstruction was wrong. True wiring: bias +14.9 -> R330 -> (C309) ->
+* R331 1M -> Q307's junction node, which connects DIRECTLY to IC35a's
+* +input; C310 -> R333 -> VR304 (two-terminal rheostat) -> G3 is IC35a's
+* gain leg on the -input. C310's "+" plate faces the input node (which
+* sits at the junction's positive avalanche voltage) and blocks DC, so
+* DC gain is 1 and midband gain is 1 + R332/(R333 + VR304) = 20..214:
+* VR304 "NOISE GAIN" is a first-stage gain trim (ng=1 -> 0 ohm, loudest).
+* Q307 itself is a behavioral source (AC 1 for filter validation; TRNOISE
+* 2 mV rms / 0.1 ms for transient); R330/C309/R331 kept topologically,
+* inert into the ideal source.
+VNZ jn 0 DC 0 AC 1 TRNOISE(2m 0.1m 0 0)
+R330 vp149 nb0 100k
+C309 nb0 0 10u
+R331 nb0 jn 1Meg
+* IC35a: non-inverting, clamped by anti-parallel D304/D305 across R332
+XIC35A jn m35a o35a opamp
+R332 m35a o35a 1Meg
+D304 m35a o35a DSIG
+D305 o35a m35a DSIG
+C310 m35a gl1 10u
+R333 gl1 gl2 4.7k
+RNG gl2 0 {max(47k*(1-ng),1)}
+* IC35b: gain -R335/R334 = -12.2; C311 couples; D306 (anode at the summing
+* node, cathode G3 - per the scan) clamps positive overloads
+C311 o35a nb1 10u
+R334 nb1 m35b 82k
+D306 m35b 0 DSIG
+R335 m35b o35b 1Meg
+XIC35B 0 m35b o35b opamp
+R336 o35b p41 1k
+
+* ================= NOISE: pink filter ===================================
+* IC31b (other half of IC31): inverting, feedback = pinking ladder.
+* C315 value NOT PRINTED on the sheet (confirmed at full res) - 0.0015u
+* assumed by decade symmetry
+* (branch corners 10.6 kHz / 106 Hz / 1.06 Hz). Input tapped at the IC35b
+* output (pre-R336; scan ambiguous, see model doc). RDCP is a convergence
+* aid: the transcribed feedback network has no DC path (opamp bias path in
+* the real part); 1G >> the ladder impedance everywhere in-band.
+C312 o35b np1 10u
+R337 np1 m31b 10k
+C314 m31b o31b 0.0015u
+C315 m31b nz1 0.0015u
+R338 nz1 o31b 10k
+C316 m31b nz2 0.015u
+R339 nz2 o31b 100k
+C317 m31b nz3 0.15u
+R340 nz3 o31b 1Meg
+RDCP m31b o31b 1G
+XIC31B 0 m31b o31b opamp
+R341 o31b p42 1k
+
+* default run: LFO transient at the default ~7.4 Hz (tests substitute this
+* block; AC decks must set oscon=0 so a DC operating point exists).
+* The timing cap starts OUTSIDE the +/-3.64 V Schmitt window: at v(tri)=0
+* the comparator's tanh loop has a metastable near-zero root that Newton
+* latches onto and the LFO never starts; beyond the threshold the comparator
+* state is unique and oscillation begins deterministically.
+.ic V(tri)=-6
+.control
+tran 0.2m 1.2 0.2 uic
+wrdata mg1_tran.txt v(p34) v(p35) v(p36) v(p37) v(tri)
+.endc
+
+.end

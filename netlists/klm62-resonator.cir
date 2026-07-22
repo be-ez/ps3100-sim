@@ -1,0 +1,85 @@
+* KLM-62 resonator (PS3100/PS3300) - SPICE reference
+*
+* Topology:
+*   - IC11a: 2nd-order Sallen-Key high-pass input buffer, fc ~= 47.7 Hz
+*   - R105/R106: -31.6 dB pad (offsets the x50 mid-band gain of each stage)
+*   - three IDENTICAL C-input bandpass stages (IC11b/IC12a/IC12b, F101-F103):
+*     series input cap, BOTH frequency-setting resistors are the two LDR
+*     elements of one HTV P873D vactrol, feedback cap inv->out.
+*       f0 = 1/(2*pi*Rldr*sqrt(Cin*Cfb))   (f0 proportional to 1/R)
+*       Q  = 0.5*sqrt(Cin/Cfb) ~= 5        (constant over the sweep)
+*       |H(f0)| = Cin/(2*Cfb) = 50         (constant over the sweep)
+*     Band stagger comes ONLY from the three LEDs (A/B/C, driven from the
+*     "RESONATORS 2/2" sheet) lighting the three vactrols differently.
+*   - IC13: unity-gain inverting summer (all 10k); R110 is its feedback,
+*     there is NO dry feed into the summer
+*   - outputs: wet (R111 100R + C111 10u -> pin 20) and dry from buf_out
+*     (R104 100R + C103 10u -> pin 18) into an external ~1.5k blend pot,
+*     wiper position k (0 = full dry, 1 = full wet)
+*
+* Color variant cap table (same caps for all three stages of a board):
+*   Yellow: .082u / 820p   Green: .068u / 680p   Blue: .056u / 560p
+*   Gray:   .039u / 390p   White: .033u / 330p
+.param Cin=0.082u Cfb=820p Rldr1=47k Rldr2=23.5k Rldr3=11.75k k=0.5
+
+.include models/vactrol.lib
+
+* ideal opamp: VCVS, open-loop gain 1e6 (supplies/limiting not modeled for AC)
+.subckt opamp inp inn out
+E1 out 0 inp inn 1e6
+.ends
+
+* IC11a input buffer: unity-gain Sallen-Key HPF
+* fc = 1/(2*pi*C*sqrt(R102*R103)) ~= 47.7 Hz, Q = 0.5*sqrt(R102/R103) ~= 0.74
+.subckt inbuf in out
+R101 in 0 100k
+C101 in nx 0.033u
+C102 nx np 0.033u
+R103 np 0 68k
+R102 nx out 150k
+XOP np out out opamp
+.ends
+
+* one resonator stage: C-input dual of the MFB bandpass, both R = LDR elements
+* of a single P873D (same LED lights both)
+.subckt resostage in out Cin=82n Cfb=820p Rl=47k
+CIN in np {Cin}
+XLDR1 np out P873D R={Rl}
+XLDR2 np ninv P873D R={Rl}
+CFB ninv out {Cfb}
+XOP 0 ninv out opamp
+.ends
+
+* resonator board
+Vin in 0 AC 1
+XBUF in buf_out inbuf
+
+* inter-stage pad
+R105 buf_out bus 1k
+R106 bus 0 27
+
+XF101 bus o1 resostage Cin={Cin} Cfb={Cfb} Rl={Rldr1}
+XF102 bus o2 resostage Cin={Cin} Cfb={Cfb} Rl={Rldr2}
+XF103 bus o3 resostage Cin={Cin} Cfb={Cfb} Rl={Rldr3}
+
+* IC13 summing amp, unity inverting; R110 is the feedback
+RS1 o1 nsum 10k
+RS2 o2 nsum 10k
+RS3 o3 nsum 10k
+R110 nsum sum_out 10k
+XSUM 0 nsum sum_out opamp
+
+* output legs and external blend pot (wiper = out, k=1 full wet)
+R111 sum_out w1 100
+C111 w1 res_out1 10u
+R104 buf_out d1 100
+C103 d1 res_out2 10u
+RPA res_out1 out {max(1.5k*(1-k),1)}
+RPB out res_out2 {max(1.5k*k,1)}
+
+.control
+ac dec 200 10 20k
+wrdata ac_out.txt vdb(out) vdb(o1) vdb(o2) vdb(o3) vdb(sum_out)
+.endc
+
+.end

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS-3100 MG1 + Noise - KLM-63 in the browser</title>
+<link rel="stylesheet" href="../lib/panel.css">
+<style>
+  .scope-hidden { display: none; }
+</style>
+</head>
+<body>
+
+<main class="room">
+
+  <section class="unit" aria-label="PS-3100 MG1 and noise panel">
+
+    <div class="panel">
+
+      <header class="panel-head">
+        <div class="badge">
+          <span class="badge-model">PS&#8209;3100</span>
+        </div>
+        <div class="badge-sub">POLYPHONIC SYNTHESIZER &middot; MG1 / NOISE&nbsp;GENERATOR &middot; KLM&#8209;63</div>
+        <div class="power-block">
+          <span class="lamp power-lamp" id="power-lamp" aria-hidden="true"></span>
+          <button class="rocker" id="power" aria-pressed="false">
+            <span class="rocker-cap"></span>
+          </button>
+          <span class="legend-sm">POWER</span>
+        </div>
+      </header>
+
+      <div class="panel-controls">
+
+        <fieldset class="section section-resonator">
+          <legend>MG&nbsp;1&nbsp;&middot;&nbsp;NOISE</legend>
+          <div class="scope-wrap">
+            <canvas id="scope-strip" class="scope" width="640" height="110" aria-label="LFO waveform"></canvas>
+            <canvas id="scope-spec" class="scope scope-hidden" width="640" height="110" aria-label="noise spectrum"></canvas>
+            <div class="lamps" aria-hidden="true">
+              <span class="glow-lamp" id="mg1-lamp"></span>
+            </div>
+          </div>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob" id="knob-freq" tabindex="0" role="slider"
+                   aria-label="Freq cont" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">FREQ&nbsp;CONT</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-fadj" tabindex="0" role="slider"
+                   aria-label="Freq adj trimmer" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">FREQ&nbsp;ADJ&nbsp;(TRIM)</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-ngain" tabindex="0" role="slider"
+                   aria-label="Noise gain" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">NOISE&nbsp;GAIN</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-variant">
+          <legend>OUTPUT&nbsp;PIN</legend>
+          <div class="chips" role="radiogroup" aria-label="output select">
+            <button class="chip chip-yellow selected" data-value="0" role="radio" aria-checked="true"><i></i>TRI&nbsp;&middot;&nbsp;34</button>
+            <button class="chip chip-green" data-value="1" role="radio" aria-checked="false"><i></i>INV&nbsp;&middot;&nbsp;35</button>
+            <button class="chip chip-blue" data-value="2" role="radio" aria-checked="false"><i></i>SQR&nbsp;&middot;&nbsp;36</button>
+            <button class="chip chip-gray" data-value="3" role="radio" aria-checked="false"><i></i>SINE&nbsp;&middot;&nbsp;37</button>
+            <button class="chip chip-white" data-value="4" role="radio" aria-checked="false"><i></i>WHITE&nbsp;&middot;&nbsp;41</button>
+            <button class="chip chip-white" data-value="5" role="radio" aria-checked="false"><i></i>PINK&nbsp;&middot;&nbsp;42</button>
+          </div>
+          <p class="chip-note">LFO pins scope-only,<br>noise pins audible</p>
+        </fieldset>
+
+      </div>
+    </div>
+  </section>
+
+  <footer class="caption">
+    <p>
+      The KLM&#8209;63 MG1 and noise generator of the PS&#8209;3100: an exponential-law
+      triangle-core LFO (&asymp;0.59&nbsp;V/oct on FREQ&nbsp;CONT&nbsp;I) with four output pins, and
+      the 2SC644 avalanche noise source with its white and pink build-outs - the pink
+      ladder is the exact factored s-domain transfer of the IC31b stage. LFO pins draw on
+      the scope; noise pins are audible and spectrum-scoped.
+    </p>
+    <p><a class="hub-link" href="../">&larr; All boards</a></p>
+  </footer>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

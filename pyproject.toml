@@ -1,0 +1,25 @@
+[project]
+name = "ps3100-sim"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.11.1",
+    "numpy>=2.5.1",
+    "pytest>=9.1.1",
+    "schemdraw>=0.23",
+    "scipy>=1.18.0",
+    "sympy>=1.14.0",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.0",
+    "ruff>=0.15.22",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100

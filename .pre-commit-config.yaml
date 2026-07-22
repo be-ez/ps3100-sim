@@ -1,0 +1,15 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.22
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: local
+    hooks:
+      - id: ngspice-syntax
+        name: ngspice netlist syntax check
+        entry: bash -c 'cd netlists && ngspice -b klm62-resonator.cir -o /dev/null && rm -f ac_out.txt'
+        language: system
+        files: ^netlists/.*\.(cir|lib)$
+        pass_filenames: false

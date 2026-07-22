@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS-3100 Voltage Processors - KLM-76 in the browser</title>
+<link rel="stylesheet" href="../lib/panel.css">
+</head>
+<body>
+
+<main class="room">
+
+  <section class="unit" aria-label="PS-3100 voltage processors panel">
+
+    <div class="panel">
+
+      <header class="panel-head">
+        <div class="badge">
+          <span class="badge-model">PS&#8209;3100</span>
+        </div>
+        <div class="badge-sub">POLYPHONIC SYNTHESIZER &middot; VOLTAGE&nbsp;PROCESSORS &middot; KLM&#8209;76</div>
+        <div class="power-block">
+          <span class="lamp power-lamp" id="power-lamp" aria-hidden="true"></span>
+          <button class="rocker" id="power" aria-pressed="false">
+            <span class="rocker-cap"></span>
+          </button>
+          <span class="legend-sm">POWER</span>
+        </div>
+      </header>
+
+      <div class="panel-controls">
+
+        <fieldset class="section section-resonator">
+          <legend>VOLTAGE&nbsp;PROCESSORS</legend>
+          <div class="scope-wrap">
+            <canvas id="scope" class="scope" width="640" height="110" aria-label="processed CV"></canvas>
+          </div>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob" id="knob-k1" tabindex="0" role="slider"
+                   aria-label="Controller 1" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">CONTROLLER&nbsp;1</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob" id="knob-k2" tabindex="0" role="slider"
+                   aria-label="Controller 2" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">CONTROLLER&nbsp;2</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-mg">
+          <legend>TEST&nbsp;CVs</legend>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-rate" tabindex="0" role="slider"
+                   aria-label="VP1 sine rate" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">VP1&nbsp;SINE&nbsp;RATE</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-dc" tabindex="0" role="slider"
+                   aria-label="VP2 DC level" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">VP2&nbsp;DC&nbsp;(&plusmn;10&nbsp;V)</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-variant">
+          <legend>MONITOR</legend>
+          <div class="chips" role="radiogroup" aria-label="output select">
+            <button class="chip chip-yellow selected" data-value="0" role="radio" aria-checked="true"><i></i>VP&nbsp;1&nbsp;OUT</button>
+            <button class="chip chip-blue" data-value="1" role="radio" aria-checked="false"><i></i>VP&nbsp;2&nbsp;OUT</button>
+          </div>
+          <p class="chip-note">shared &minus;5&nbsp;V bus:<br>watch VP2's knob nudge<br>VP1's trace</p>
+        </fieldset>
+
+      </div>
+    </div>
+  </section>
+
+  <footer class="caption">
+    <p>
+      The KLM&#8209;76 Voltage Processors of the PS&#8209;3100: two bipolar
+      attenuverters for the patch field - CW non-inverting, CCW inverting, center
+      null. The model solves the exact pot network on the shared &minus;5&nbsp;V bus, so the
+      bus sag, the imperfect null, and the faint antiphase crosstalk between channels are
+      all SPICE-exact. A slow sine feeds VP&nbsp;1 and a DC level feeds VP&nbsp;2; the scope
+      draws the selected output.
+    </p>
+    <p><a class="hub-link" href="../">&larr; All boards</a></p>
+  </footer>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

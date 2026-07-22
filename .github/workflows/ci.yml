@@ -1,0 +1,64 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: sudo apt-get update && sudo apt-get install -y ngspice faust
+      - run: uv sync
+      - run: uv run pytest -v
+      - run: uv run python analysis/render_schemdraw.py -o schematics/klm62.svg
+      - run: uv run python analysis/ac_analysis.py --plot analysis/bode.png
+      - run: uv run python analysis/derive_tf.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renders
+          path: |
+            schematics/klm62.svg
+            analysis/bode.png
+            analysis/reference.json
+            analysis/coeffs_table.json
+
+  plugin:
+    needs: validate
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: runner.os == 'Linux'
+        run: >
+          sudo apt-get update && sudo apt-get install -y faust
+          libasound2-dev libjack-jackd2-dev libcurl4-openssl-dev
+          libfreetype6-dev libfontconfig1-dev libx11-dev libxcomposite-dev
+          libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev
+          libxrender-dev libglu1-mesa-dev
+      - if: runner.os == 'macOS'
+        run: brew install faust
+      # Windows has no faust package; the build falls back to the committed
+      # plugin/generated/resonator_faust.h
+      - run: cmake -B plugin/build plugin
+      - run: cmake --build plugin/build --config Release
+      - name: pluginval
+        if: runner.os != 'Windows'  # TODO: enable on Windows (zip/exe handling)
+        shell: bash
+        run: |
+          curl -fsSL -o pluginval.zip \
+            "https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_${{ runner.os == 'macOS' && 'macOS' || 'Linux' }}.zip"
+          unzip -q pluginval.zip
+          VST3=$(find plugin/build/PS3100Resonator_artefacts -name "*.vst3" -maxdepth 3 | head -1)
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            PV="pluginval.app/Contents/MacOS/pluginval"
+          else
+            PV="./pluginval"
+            sudo apt-get install -y xvfb
+            PV="xvfb-run -a ./pluginval"
+          fi
+          $PV --strictness-level 5 --validate "$VST3"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin-${{ matrix.os }}
+          path: plugin/build/PS3100Resonator_artefacts/**

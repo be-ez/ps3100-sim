@@ -1,0 +1,639 @@
+{
+  "name": "instrument_poly",
+  "compile_options": "-lang wasm-i -fpga-mem-th 4 -ct 1 -es 1 -mcd 16 -mdd 1024 -mdy 33 -double -ftz 0",
+  "size": 59800,
+  "inputs": 0,
+  "outputs": 1,
+  "meta": [
+    {
+      "basics.lib/listInterp:author": "Romain Michon"
+    },
+    {
+      "basics.lib/name": "Faust Basic Element Library"
+    },
+    {
+      "basics.lib/version": "1.22.0"
+    },
+    {
+      "compile_options": "-lang wasm-i -fpga-mem-th 4 -ct 1 -es 1 -mcd 16 -mdd 1024 -mdy 33 -double -ftz 0"
+    },
+    {
+      "delays.lib/fdelay5:author": "Julius O. Smith III"
+    },
+    {
+      "delays.lib/fdelayltv:author": "Julius O. Smith III"
+    },
+    {
+      "delays.lib/name": "Faust Delay Library"
+    },
+    {
+      "delays.lib/version": "1.2.0"
+    },
+    {
+      "filename": "instrument_poly.dsp"
+    },
+    {
+      "filters.lib/fir:author": "Julius O. Smith III"
+    },
+    {
+      "filters.lib/fir:copyright": "Copyright (C) 2003-2019 by Julius O. Smith III <jos@ccrma.stanford.edu>"
+    },
+    {
+      "filters.lib/fir:license": "MIT-style STK-4.3 license"
+    },
+    {
+      "filters.lib/iir:author": "Julius O. Smith III"
+    },
+    {
+      "filters.lib/iir:copyright": "Copyright (C) 2003-2019 by Julius O. Smith III <jos@ccrma.stanford.edu>"
+    },
+    {
+      "filters.lib/iir:license": "MIT-style STK-4.3 license"
+    },
+    {
+      "filters.lib/lowpass0_highpass1": "MIT-style STK-4.3 license"
+    },
+    {
+      "filters.lib/name": "Faust Filters Library"
+    },
+    {
+      "filters.lib/tf1:author": "Julius O. Smith III"
+    },
+    {
+      "filters.lib/tf1:copyright": "Copyright (C) 2003-2019 by Julius O. Smith III <jos@ccrma.stanford.edu>"
+    },
+    {
+      "filters.lib/tf1:license": "MIT-style STK-4.3 license"
+    },
+    {
+      "filters.lib/tf1s:author": "Julius O. Smith III"
+    },
+    {
+      "filters.lib/tf1s:copyright": "Copyright (C) 2003-2019 by Julius O. Smith III <jos@ccrma.stanford.edu>"
+    },
+    {
+      "filters.lib/tf1s:license": "MIT-style STK-4.3 license"
+    },
+    {
+      "filters.lib/tf2:author": "Julius O. Smith III"
+    },
+    {
+      "filters.lib/tf2:copyright": "Copyright (C) 2003-2019 by Julius O. Smith III <jos@ccrma.stanford.edu>"
+    },
+    {
+      "filters.lib/tf2:license": "MIT-style STK-4.3 license"
+    },
+    {
+      "filters.lib/tf2s:author": "Julius O. Smith III"
+    },
+    {
+      "filters.lib/tf2s:copyright": "Copyright (C) 2003-2019 by Julius O. Smith III <jos@ccrma.stanford.edu>"
+    },
+    {
+      "filters.lib/tf2s:license": "MIT-style STK-4.3 license"
+    },
+    {
+      "filters.lib/version": "1.7.1"
+    },
+    {
+      "interpolators.lib/interpolate_linear:author": "St\u00e9phane Letz"
+    },
+    {
+      "interpolators.lib/interpolate_linear:licence": "MIT"
+    },
+    {
+      "interpolators.lib/name": "Faust Interpolator Library"
+    },
+    {
+      "interpolators.lib/version": "1.4.0"
+    },
+    {
+      "maths.lib/author": "GRAME"
+    },
+    {
+      "maths.lib/copyright": "GRAME"
+    },
+    {
+      "maths.lib/license": "LGPL with exception"
+    },
+    {
+      "maths.lib/name": "Faust Math Library"
+    },
+    {
+      "maths.lib/version": "2.9.0"
+    },
+    {
+      "name": "instrument_poly"
+    },
+    {
+      "platform.lib/name": "Generic Platform Library"
+    },
+    {
+      "platform.lib/version": "1.3.0"
+    },
+    {
+      "signals.lib/name": "Faust Routing Library"
+    },
+    {
+      "signals.lib/version": "1.6.0"
+    }
+  ],
+  "ui": [
+    {
+      "type": "vgroup",
+      "label": "instrument_poly",
+      "items": [
+        {
+          "type": "vgroup",
+          "label": "ensemble",
+          "items": [
+            {
+              "type": "checkbox",
+              "label": "bypass",
+              "varname": "fCheckbox0",
+              "shortname": "bypass",
+              "address": "/instrument_poly/ensemble/bypass",
+              "index": 8
+            },
+            {
+              "type": "nentry",
+              "label": "g1",
+              "varname": "fEntry1",
+              "shortname": "g1",
+              "address": "/instrument_poly/ensemble/g1",
+              "index": 16,
+              "init": 1,
+              "min": 0,
+              "max": 1,
+              "step": 0.001
+            },
+            {
+              "type": "nentry",
+              "label": "g2",
+              "varname": "fEntry12",
+              "shortname": "g2",
+              "address": "/instrument_poly/ensemble/g2",
+              "index": 59680,
+              "init": 1,
+              "min": 0,
+              "max": 1,
+              "step": 0.001
+            },
+            {
+              "type": "checkbox",
+              "label": "lfo_freeze",
+              "varname": "fCheckbox1",
+              "shortname": "lfo_freeze",
+              "address": "/instrument_poly/ensemble/lfo_freeze",
+              "index": 184
+            },
+            {
+              "type": "hslider",
+              "label": "lfo_phase_a",
+              "varname": "fHslider0",
+              "shortname": "lfo_phase_a",
+              "address": "/instrument_poly/ensemble/lfo_phase_a",
+              "index": 216,
+              "init": 0,
+              "min": 0,
+              "max": 1,
+              "step": 0.001
+            },
+            {
+              "type": "hslider",
+              "label": "lfo_phase_b",
+              "varname": "fHslider18",
+              "shortname": "lfo_phase_b",
+              "address": "/instrument_poly/ensemble/lfo_phase_b",
+              "index": 59712,
+              "init": 0,
+              "min": 0,
+              "max": 1,
+              "step": 0.001
+            },
+            {
+              "type": "nentry",
+              "label": "monitor",
+              "varname": "fEntry0",
+              "shortname": "monitor",
+              "address": "/instrument_poly/ensemble/monitor",
+              "index": 0,
+              "init": 0,
+              "min": 0,
+              "max": 4,
+              "step": 1
+            }
+          ]
+        },
+        {
+          "type": "vgroup",
+          "label": "poly",
+          "items": [
+            {
+              "type": "vgroup",
+              "label": "poly",
+              "items": [
+                {
+                  "type": "hslider",
+                  "label": "attack",
+                  "varname": "fHslider6",
+                  "shortname": "poly_attack",
+                  "address": "/instrument_poly/poly/poly/attack",
+                  "index": 664,
+                  "init": 0.1,
+                  "min": 0.001,
+                  "max": 1,
+                  "step": 0.001
+                },
+                {
+                  "type": "nentry",
+                  "label": "bus_gain",
+                  "varname": "fEntry2",
+                  "shortname": "bus_gain",
+                  "address": "/instrument_poly/poly/poly/bus_gain",
+                  "index": 536,
+                  "init": 1,
+                  "min": 0,
+                  "max": 64,
+                  "step": 0.001
+                },
+                {
+                  "type": "checkbox",
+                  "label": "bypass_env",
+                  "varname": "fCheckbox5",
+                  "shortname": "bypass_env",
+                  "address": "/instrument_poly/poly/poly/bypass_env",
+                  "index": 640
+                },
+                {
+                  "type": "checkbox",
+                  "label": "bypass_filter",
+                  "varname": "fCheckbox3",
+                  "shortname": "bypass_filter",
+                  "address": "/instrument_poly/poly/poly/bypass_filter",
+                  "index": 544
+                },
+                {
+                  "type": "checkbox",
+                  "label": "bypass_nl",
+                  "varname": "fCheckbox4",
+                  "shortname": "bypass_nl",
+                  "address": "/instrument_poly/poly/poly/bypass_nl",
+                  "index": 552
+                },
+                {
+                  "type": "hslider",
+                  "label": "cv",
+                  "varname": "fHslider2",
+                  "shortname": "poly_cv",
+                  "address": "/instrument_poly/poly/poly/cv",
+                  "index": 600,
+                  "init": -1.62,
+                  "min": -9,
+                  "max": -0.55,
+                  "step": 0.001
+                },
+                {
+                  "type": "nentry",
+                  "label": "keys_hi",
+                  "varname": "fEntry7",
+                  "shortname": "keys_hi",
+                  "address": "/instrument_poly/poly/poly/keys_hi",
+                  "index": 21152,
+                  "init": 0,
+                  "min": 0,
+                  "max": 16777200.0,
+                  "step": 1
+                },
+                {
+                  "type": "nentry",
+                  "label": "keys_lo",
+                  "varname": "fEntry6",
+                  "shortname": "keys_lo",
+                  "address": "/instrument_poly/poly/poly/keys_lo",
+                  "index": 648,
+                  "init": 0,
+                  "min": 0,
+                  "max": 16777200.0,
+                  "step": 1
+                },
+                {
+                  "type": "hslider",
+                  "label": "release",
+                  "varname": "fHslider5",
+                  "shortname": "poly_release",
+                  "address": "/instrument_poly/poly/poly/release",
+                  "index": 656,
+                  "init": 4.7,
+                  "min": 0.05,
+                  "max": 10,
+                  "step": 0.01
+                },
+                {
+                  "type": "nentry",
+                  "label": "sig_trim",
+                  "varname": "fEntry3",
+                  "shortname": "sig_trim",
+                  "address": "/instrument_poly/poly/poly/sig_trim",
+                  "index": 576,
+                  "init": 0.05,
+                  "min": 0,
+                  "max": 1,
+                  "step": 0.0001
+                },
+                {
+                  "type": "hslider",
+                  "label": "vfc",
+                  "varname": "fHslider7",
+                  "shortname": "vfc",
+                  "address": "/instrument_poly/poly/poly/vfc",
+                  "index": 960,
+                  "init": -6,
+                  "min": -14,
+                  "max": 0,
+                  "step": 0.01
+                },
+                {
+                  "type": "nentry",
+                  "label": "vmid",
+                  "varname": "fEntry4",
+                  "shortname": "vmid",
+                  "address": "/instrument_poly/poly/poly/vmid",
+                  "index": 584,
+                  "init": 7.45,
+                  "min": 0,
+                  "max": 14.9,
+                  "step": 0.01
+                },
+                {
+                  "type": "nentry",
+                  "label": "vsq",
+                  "varname": "fEntry5",
+                  "shortname": "vsq",
+                  "address": "/instrument_poly/poly/poly/vsq",
+                  "index": 592,
+                  "init": 5.2,
+                  "min": 0,
+                  "max": 10,
+                  "step": 0.01
+                },
+                {
+                  "type": "hslider",
+                  "label": "wfd",
+                  "varname": "fHslider3",
+                  "shortname": "wfd",
+                  "address": "/instrument_poly/poly/poly/wfd",
+                  "index": 624,
+                  "init": 0,
+                  "min": 0,
+                  "max": 13,
+                  "step": 0.001
+                },
+                {
+                  "type": "hslider",
+                  "label": "wfr",
+                  "varname": "fHslider4",
+                  "shortname": "wfr",
+                  "address": "/instrument_poly/poly/poly/wfr",
+                  "index": 632,
+                  "init": 14.83,
+                  "min": 0,
+                  "max": 14.9,
+                  "step": 0.001
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "vgroup",
+          "label": "resonator",
+          "items": [
+            {
+              "type": "hslider",
+              "label": "blend",
+              "varname": "fHslider13",
+              "shortname": "blend",
+              "address": "/instrument_poly/resonator/blend",
+              "index": 42184,
+              "init": 1,
+              "min": 0,
+              "max": 1,
+              "step": 0.001
+            },
+            {
+              "type": "checkbox",
+              "label": "bypass_vactrol",
+              "varname": "fCheckbox7",
+              "shortname": "resonator_bypass_vactrol",
+              "address": "/instrument_poly/resonator/bypass_vactrol",
+              "index": 42224
+            },
+            {
+              "type": "nentry",
+              "label": "color",
+              "varname": "fEntry10",
+              "shortname": "color",
+              "address": "/instrument_poly/resonator/color",
+              "index": 42208,
+              "init": 0,
+              "min": 0,
+              "max": 4,
+              "step": 1
+            },
+            {
+              "type": "hslider",
+              "label": "cv",
+              "varname": "fHslider15",
+              "shortname": "resonator_cv",
+              "address": "/instrument_poly/resonator/cv",
+              "index": 42232,
+              "init": 0.5,
+              "min": 0,
+              "max": 1,
+              "step": 0.001
+            },
+            {
+              "type": "hslider",
+              "label": "peak1",
+              "varname": "fHslider14",
+              "shortname": "peak1",
+              "address": "/instrument_poly/resonator/peak1",
+              "index": 42216,
+              "init": 0.5,
+              "min": 0,
+              "max": 1,
+              "step": 0.001
+            },
+            {
+              "type": "hslider",
+              "label": "peak2",
+              "varname": "fHslider16",
+              "shortname": "peak2",
+              "address": "/instrument_poly/resonator/peak2",
+              "index": 42344,
+              "init": 0.5,
+              "min": 0,
+              "max": 1,
+              "step": 0.001
+            },
+            {
+              "type": "hslider",
+              "label": "peak3",
+              "varname": "fHslider17",
+              "shortname": "peak3",
+              "address": "/instrument_poly/resonator/peak3",
+              "index": 42384,
+              "init": 0.5,
+              "min": 0,
+              "max": 1,
+              "step": 0.001
+            },
+            {
+              "type": "nentry",
+              "label": "rldr",
+              "varname": "fEntry11",
+              "shortname": "rldr",
+              "address": "/instrument_poly/resonator/rldr",
+              "index": 42288,
+              "init": 47000,
+              "min": 1000,
+              "max": 1000000.0,
+              "step": 1
+            }
+          ]
+        },
+        {
+          "type": "vgroup",
+          "label": "vca",
+          "items": [
+            {
+              "type": "checkbox",
+              "label": "bypass_vactrol",
+              "varname": "fCheckbox2",
+              "shortname": "vca_bypass_vactrol",
+              "address": "/instrument_poly/vca/bypass_vactrol",
+              "index": 448
+            },
+            {
+              "type": "hslider",
+              "label": "cv2",
+              "varname": "fHslider1",
+              "shortname": "cv2",
+              "address": "/instrument_poly/vca/cv2",
+              "index": 472,
+              "init": 1,
+              "min": 0,
+              "max": 1,
+              "step": 0.001
+            },
+            {
+              "type": "vgroup",
+              "label": "geg",
+              "items": [
+                {
+                  "type": "hslider",
+                  "label": "attack",
+                  "varname": "fHslider12",
+                  "shortname": "geg_attack",
+                  "address": "/instrument_poly/vca/geg/attack",
+                  "index": 41752,
+                  "init": 0.3,
+                  "min": 0,
+                  "max": 1,
+                  "step": 0.001
+                },
+                {
+                  "type": "hslider",
+                  "label": "delay",
+                  "varname": "fHslider10",
+                  "shortname": "delay",
+                  "address": "/instrument_poly/vca/geg/delay",
+                  "index": 41704,
+                  "init": 0,
+                  "min": 0,
+                  "max": 1,
+                  "step": 0.001
+                },
+                {
+                  "type": "hslider",
+                  "label": "release",
+                  "varname": "fHslider11",
+                  "shortname": "geg_release",
+                  "address": "/instrument_poly/vca/geg/release",
+                  "index": 41736,
+                  "init": 0.3,
+                  "min": 0,
+                  "max": 1,
+                  "step": 0.001
+                },
+                {
+                  "type": "vgroup",
+                  "label": "trigger",
+                  "items": [
+                    {
+                      "type": "hslider",
+                      "label": "Rkbd",
+                      "varname": "fHslider9",
+                      "shortname": "Rkbd",
+                      "address": "/instrument_poly/vca/geg/trigger/Rkbd",
+                      "index": 41648,
+                      "init": 10000,
+                      "min": 1,
+                      "max": 1000000.0,
+                      "step": 1
+                    },
+                    {
+                      "type": "hslider",
+                      "label": "Vstep",
+                      "varname": "fHslider8",
+                      "shortname": "Vstep",
+                      "address": "/instrument_poly/vca/geg/trigger/Vstep",
+                      "index": 41632,
+                      "init": 10,
+                      "min": 0,
+                      "max": 30,
+                      "step": 1e-06
+                    },
+                    {
+                      "type": "checkbox",
+                      "label": "multiple",
+                      "varname": "fCheckbox6",
+                      "shortname": "multiple",
+                      "address": "/instrument_poly/vca/geg/trigger/multiple",
+                      "index": 41608
+                    },
+                    {
+                      "type": "nentry",
+                      "label": "nkeys",
+                      "varname": "fEntry8",
+                      "shortname": "nkeys",
+                      "address": "/instrument_poly/vca/geg/trigger/nkeys",
+                      "index": 41640,
+                      "init": 0,
+                      "min": 0,
+                      "max": 48,
+                      "step": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "nentry",
+              "label": "rldr2",
+              "varname": "fEntry9",
+              "shortname": "rldr2",
+              "address": "/instrument_poly/vca/rldr2",
+              "index": 41840,
+              "init": 0,
+              "min": 0,
+              "max": 1000000.0,
+              "step": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

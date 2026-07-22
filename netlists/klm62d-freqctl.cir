@@ -1,0 +1,139 @@
+* KLM-62D FREQUENCY CONTROL (PS3100/3300) - SPICE reference
+*
+* Topology:
+*   - IC41b: inverting MOD R summer (pins 43/44 through 100k, 100k fb)
+*   - IC41a: master CV summer: -14.9V offset (R401 2.2M), COARSE (R402
+*     820k), FINE (R403 4.7M), MOD1/MOD2 (R404/R405 100k), IC41b out via
+*     R406 51k || R428 2.2M; fb R412 100k || C401 1n (1.59 kHz pole)
+*   - exponential converter: IC41a out -> R413 5.1k -> R416 100R shunt
+*     (= /52 attenuation, ~19.2 mV/V) -> right base of Q401 (2SA798
+*     matched PNP pair). IC42a integrator (C402 0.1u) servos the common
+*     emitters via R414 2.2k so the LEFT collector carries exactly
+*     I_ref = 14.9V/(R415 620k + VR401 470k*ttune)  [13.7..24 uA];
+*     right collector then delivers Ic = I_ref * exp(-Vb/VT).
+*     D401 (anode at the servo node) / D402 (anode G3, cathode at the
+*     emitter rail) are startup/overdrive clamps, off in normal operation.
+*   - output servo IC42b: (+) input = right-collector sense node ns;
+*     (-) input = reference rail (R417 1k || C403 1n from ns, D403 clamp
+*     to G3, Q402 emitter, R420 62k + R421 10k in series to the bus).
+*     Feedback R423 100k || C404 100p (and clamp D404, anode bus) from ns
+*     to the BUS: the loop nulls the R417 current, forcing
+*         V(bus) = V(rail) - R423 * Ic          (100 mV per uA)
+*     IC42b out -> R422 47k -> D405 5.1V zener level shift -> Q403 base
+*     (2SC945K common emitter, emitter to pin 36 -15V, collector = bus);
+*     R425 100k pre-biases the zener from the R422 node to -15V.
+*     Q402 (2SC945K follower; base = VR402 1k "LINEALITY ADJUST" wiper in
+*     the R426 100R / R427 51k network) sources the null current
+*     (100k/72k)*Ic into the rail: its Vbe adds a logarithmic bend and the
+*     -2mV/K tempco that compensates the bus driver ("temperature/
+*     linearity-compensated bus driver referenced to -15V").
+*   - bus node: R424 10k to G3, pin 37 TEMPERAMENT BUS. Q403 only sinks:
+*     the bus is regulated (near-zero output impedance) while
+*     I_drawn < |V(bus)|/10k + (100k/72k)*Ic; top of range ~= V(rail).
+*
+* Parameters (rewritten by tests, keep on ONE line):
+*   vcoarse/vfine  : pins 39/40, volts (panel pot wiring is NOT on this
+*                    sheet; pins exposed directly)
+*   vmod1/vmod2    : pins 41/42 (MOD 1/2 buses), volts
+*   vmodr1/vmodr2  : pins 43/44 (MOD R1/R2 buses = panel FREQ CONT pots,
+*                    shared with KLM-63 MG1 pins 43/44), volts
+*   ttune          : VR401 TOTAL TUNE 0..1 (1 = max series R = min I_ref)
+*   lin            : VR402 LINEALITY ADJUST wiper 0..1 (0 = G3 end)
+*   iload          : test load, amps DRAWN from the temperament bus
+.param vcoarse=0 vfine=0 vmod1=0 vmod2=0 vmodr1=0 vmodr2=0 ttune=0.5 lin=0.5 iload=0
+
+* op-amp: VCVS gain 1e6 with output swing limits (4558: +-13.5V on +-14.9V
+* rails; LM358: +13.4/-14.85V - it swings to within ~50mV of V-)
+.subckt opamp inp inn out vneg=-13.5 vpos=13.5
+B1 out 0 V = min(max(1e6*(v(inp)-v(inn)), vneg), vpos)
+.ends
+
+* nominal mid-spread models, same style as netlists/klm62-cv.cir
+.model QC945 NPN(IS=10f BF=300 VAF=100)
+.model QA798 PNP(IS=10f BF=250 VAF=100)
+.model DCLAMP D(IS=10f)
+* D405 "Z 5.1V": 5.1V zener (RD5.1E-class), knee placed at the ~60-200uA
+* bias R425/R422 deliver
+.model DZ51 D(IS=10f BV=5.1 IBV=50u)
+
+* supplies and pins
+VP5 vp149 0 14.9
+VN6 vn149 0 -14.9
+VN36 vn15 0 -15
+V39 p39 0 {vcoarse}
+V40 p40 0 {vfine}
+V41 p41 0 DC {vmod1} AC 1
+V42 p42 0 {vmod2}
+V43 p43 0 {vmodr1}
+V44 p44 0 {vmodr2}
+
+* ---- IC41b: MOD R summing amp ----
+R408 p43 nb41 100k
+R409 p44 nb41 100k
+R407 nb41 o41b 100k
+R410 np41b 0 47k
+XIC41B np41b nb41 o41b opamp
+
+* ---- IC41a: master CV summing amp ----
+R401 vn149 na41 2.2Meg
+R402 p39 na41 820k
+R403 p40 na41 4.7Meg
+R404 p41 na41 100k
+R405 p42 na41 100k
+R406 o41b na41 51k
+R428 o41b na41 2.2Meg
+R412 na41 o41a 100k
+C401 na41 o41a 1n
+R411 np41a 0 47k
+XIC41A np41a na41 o41a opamp
+
+* ---- exponential converter: Q401 2SA798 pair + IC42a servo ----
+R413 o41a baser 5.1k
+R416 baser 0 100
+* Q401 left half: base G3, collector into the servo summing node
+Q401L nsv 0 erail QA798
+* Q401 right half: base = attenuated CV, collector into the sense node
+Q401R ns baser erail QA798
+D402 0 erail DCLAMP
+R414 o42a erail 2.2k
+C402 nsv o42a 0.1u
+D401 nsv 0 DCLAMP
+R415 nsv ntt 620k
+* VR401 rheostat (wiper tied to the -14.9V end as drawn)
+RV401 ntt vn149 {max(470k*ttune,1)}
+XIC42A 0 nsv o42a opamp
+
+* ---- reference rail and Q402 lineality/temperature compensation ----
+R417 ns rail 1k
+C403 ns rail 1n
+D403 rail 0 DCLAMP
+R420 rail nmid 62k
+R421 nmid bus 10k
+R418 vp149 ncq 12k
+R419 ncq 0 3.3k
+* VR402 1k across G3..nA, R426 100R G3..nA, R427 51k nA..-14.9V
+RV402A 0 nw {max(1k*lin,1)}
+RV402B nw na402 {max(1k*(1-lin),1)}
+R426 0 na402 100
+R427 na402 vn149 51k
+Q402 ncq nw rail QC945
+
+* ---- output servo IC42b + level shift + bus driver Q403 ----
+XIC42B ns rail o42b opamp vneg=-14.85 vpos=13.4
+R423 ns bus 100k
+C404 ns bus 100p
+D404 bus ns DCLAMP
+R422 o42b nx 47k
+R425 nx vn15 100k
+* zener: cathode at the R422 node, anode into Q403's base (drop nx-5.1)
+D405 nb403 nx DZ51
+Q403 bus nb403 vn15 QC945
+R424 bus 0 10k
+IL bus 0 {iload}
+
+.control
+dc V39 -14.9 14.9 0.1
+wrdata freqctl_dc.txt v(bus) v(rail) v(o41a)
+.endc
+
+.end

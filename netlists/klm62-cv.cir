@@ -1,0 +1,148 @@
+* KLM-62D CV / vactrol LED driver (PS3100/PS3300) - SPICE reference
+*
+* Topology:
+*   - servo reference (IC13 half, Q101, D101): IC13 drives the shared emitter
+*     rail to whatever ~-0.5 V makes Q101 sink exactly I_ref = 14.9V/10M
+*     ~= 1.49 uA; Vbe-referenced "exponential zero", temperature-compensating
+*     Q102-Q104
+*   - three exponential converters (Q102/Q103/Q104, 2SC945): base = the band
+*     CV summing node (four 270k matrix inputs vs 2.7k shunt ~= /104 divider,
+*     so ~2.69 V per e-fold, ~1.86 V/octave of collector current at the
+*     matrix inputs); Ic ~= I_ref * exp(Vbase/VT)
+*   - LED drivers (Q105/Q106/Q107, 2SA733, emitters on +14.9V):
+*     I_led ~= hFE(pnp) * Ic until the 470R series resistors cap it at
+*     ~(14.9 - Vf - Vce_sat)/470 ~= 28 mA
+*   - CV matrix per band (R123-R134, all 270k): panel peak pot (10kB,
+*     +10V..gnd, wiper -> pin -> 10k on-board load), RES MOD 1 / RES MOD 2
+*     common buses, FC trimmer (100k, G1..-14.9V)
+*
+* Band lettering:
+*   band A = Q102/Q105/F101, 1st peak pot (pin 11, "PEAK CONT 3"), VR101 "FC3"
+*   band B = Q103/Q106/F102, 2nd peak pot (pin 10, "PEAK CONT 2"), VR102 "FC2"
+*   band C = Q104/Q107/F103, 3rd peak pot (pin 9,  "PEAK CONT 1"), VR103 "FC1"
+* The F101/F102/F103 LDR halves are stages 1/2/3 of netlists/klm62-resonator.cir
+* (f0 = 1/(2*pi*Rldr*sqrt(Cin*Cfb)), so band A = lowest band = "1st peak").
+*
+* Parameters (rewritten by analysis/cv_law.py, keep on ONE line):
+*   vrm1/vrm2 : RES MOD 1/2 bus voltages in PANEL volts. The panel PEAK FREQ
+*               CV jack is printed -5V~+5V (p0023) and the canonical sweep
+*               source (MG2 OUT) is a +/-2.73 V triangle, so the bus is
+*               BIPOLAR around 0 V: the master sweep cv in [0,1] maps to
+*               vrm1 = 10*(cv-0.5) (-5..+5 V), vrm2 = 0. cv=0.5 <=> 0 V bus
+*               = nothing patched (jack normalled to ground) = no modulation.
+*   pkA..pkC  : peak pot positions 0..1 (1 = wiper at +10V)
+*   fcA..fcC  : FC trimmer positions 0..1 (1 = wiper at -14.9V)
+* FC defaults are calibrated (analysis/cv_law.py:FC_DEFAULTS, keep in sync) so
+* that at vrm1=0 (no modulation), pk=0.5 the three LDR resistances are
+* 47k / 23.5k / 11.75k: the factory-trim intent of one octave between adjacent
+* bands, matching the audio netlist's provisional stagger defaults.
+.param vrm1=0 vrm2=0 pkA=0.5 pkB=0.5 pkC=0.5 fcA=0.4269 fcB=0.2510 fcC=0.0794
+
+* ideal opamp: VCVS, open-loop gain 1e6 (supplies/limiting not modeled)
+.subckt opamp inp inn out
+E1 out 0 inp inn 1e6
+.ends
+
+* nominal mid-spread models; 2SC945/2SA733 hFE ranks straddle these values
+.model QC945 NPN(IS=10f BF=300 VAF=100)
+.model QA733 PNP(IS=10f BF=250 VAF=100)
+.model DCLAMP D(IS=10f)
+* photocoupler LED half: red-LED-like Vf ~= 1.6 V at mA currents
+.model LEDP873 D(IS=1e-18 N=1.8 RS=1)
+
+* supplies (pins [1] reference/[3] LED rail are separate RC-filtered domains
+* of the same +14.9V supply, page 0005; modeled as two ideal sources)
+VP1 vp149a 0 14.9
+VP3 vp149b 0 14.9
+VN2 vn149 0 -14.9
+VPP vp10 0 10
+* RES MOD buses (pins 7/8); VRM1 is the DC-swept master CV
+VRM1 resmod1 0 {vrm1}
+VRM2 resmod2 0 {vrm2}
+
+* ---- servo reference: IC13 half, Q101, D101 ----
+R112 vp149b nx 10Meg
+C112 nx nout 1n
+XIC13B 0 nx nout opamp
+R113 nout rail 2.2k
+Q101 nx 0 rail QC945
+D101 rail 0 DCLAMP
+
+* ---- band A: Q102/Q105, F101, 1st peak (pin 11), VR101 (FC3) ----
+* peak pot: 10kB from +10V to gnd, wiper = pin 11 node, R135 10k load
+RPA1 vp10 pkwA {max(10k*(1-pkA),1)}
+RPA2 pkwA 0 {max(10k*pkA,1)}
+R135 pkwA 0 10k
+* FC trimmer VR101: 100k from G1 (top) to -14.9V (bottom); fc = travel
+* toward the -14.9V end, so top-to-wiper segment = 100k*fc
+RFA1 0 fcwA {max(100k*fcA,1)}
+RFA2 fcwA vn149 {max(100k*(1-fcA),1)}
+* CV matrix into the band A summing node
+R123 pkwA cvA 270k
+R124 resmod2 cvA 270k
+R125 resmod1 cvA 270k
+R126 fcwA cvA 270k
+R114 cvA 0 2.7k
+* expo converter and LED driver
+Q102 ncA cvA rail QC945
+R117 ncA nbA 10k
+Q105 nledA nbA vp149a QA733
+R120 nledA anA 470
+DF101 anA kaA LEDP873
+VSA kaA 0 0
+
+* ---- band B: Q103/Q106, F102, 2nd peak (pin 10), VR102 (FC2) ----
+RPB1 vp10 pkwB {max(10k*(1-pkB),1)}
+RPB2 pkwB 0 {max(10k*pkB,1)}
+R136 pkwB 0 10k
+RFB1 0 fcwB {max(100k*fcB,1)}
+RFB2 fcwB vn149 {max(100k*(1-fcB),1)}
+R127 pkwB cvB 270k
+R128 resmod2 cvB 270k
+R129 resmod1 cvB 270k
+R130 fcwB cvB 270k
+R115 cvB 0 2.7k
+Q103 ncB cvB rail QC945
+R118 ncB nbB 10k
+Q106 nledB nbB vp149a QA733
+R121 nledB anB 470
+DF102 anB kaB LEDP873
+VSB kaB 0 0
+
+* ---- band C: Q104/Q107, F103, 3rd peak (pin 9), VR103 (FC1) ----
+RPC1 vp10 pkwC {max(10k*(1-pkC),1)}
+RPC2 pkwC 0 {max(10k*pkC,1)}
+R137 pkwC 0 10k
+RFC1 0 fcwC {max(100k*fcC,1)}
+RFC2 fcwC vn149 {max(100k*(1-fcC),1)}
+R131 pkwC cvC 270k
+R132 resmod2 cvC 270k
+R133 resmod1 cvC 270k
+R134 fcwC cvC 270k
+R116 cvC 0 2.7k
+Q104 ncC cvC rail QC945
+R119 ncC nbC 10k
+Q107 nledC nbC vp149a QA733
+R122 nledC anC 470
+DF103 anC kaC LEDP873
+VSC kaC 0 0
+
+* ---- LED current -> LDR resistance (P873-class CdS photocell) ----
+* log(R) vs log(I_led) is linear over the useful range: the standard CdS
+* photoresistive characteristic with slope gamma ~= 0.7..0.9 (vactrol
+* literature, e.g. "Direct Design of Vactrol-based LDR Effects"). No
+* digitized P873 curve was available, so the power law
+*     R = R0 * (I_led / 1 mA)^-gamma,  R0 = 15k, gamma = 0.8
+* is anchored to the model's stated useful range: R ~= 1k fully lit (at the
+* ~28 mA 470R cap) and R -> 1M dark, clamped to [1k, 1M] outside it.
+* v(rA)/v(rB)/v(rC) read out the three LDR resistances in ohms.
+BRA rA 0 V = min(1e6, max(1e3, 15e3*pow(max(i(VSA),1e-12)/1e-3, -0.8)))
+BRB rB 0 V = min(1e6, max(1e3, 15e3*pow(max(i(VSB),1e-12)/1e-3, -0.8)))
+BRC rC 0 V = min(1e6, max(1e3, 15e3*pow(max(i(VSC),1e-12)/1e-3, -0.8)))
+
+.control
+dc VRM1 -5 5 0.05
+wrdata cv_out.txt v(rA) v(rB) v(rC) i(VSA) i(VSB) i(VSC)
+.endc
+
+.end

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS-3100 - 48-voice polyphonic in the browser</title>
+<link rel="stylesheet" href="../lib/panel.css">
+<style>
+  .section-slim { flex: 1 1 auto; }
+</style>
+</head>
+<body>
+
+<main class="room">
+
+  <section class="unit" aria-label="PS-3100 polyphonic panel">
+
+    <div class="panel">
+
+      <header class="panel-head">
+        <div class="badge">
+          <span class="badge-model">PS&#8209;3100</span>
+        </div>
+        <div class="badge-sub">POLYPHONIC SYNTHESIZER &middot; 48&nbsp;CHANNELS &middot; ONE&nbsp;WASM</div>
+        <div class="power-block">
+          <span class="lamp power-lamp" id="power-lamp" aria-hidden="true"></span>
+          <button class="rocker" id="power" aria-pressed="false">
+            <span class="rocker-cap"></span>
+          </button>
+          <span class="legend-sm">POWER</span>
+        </div>
+      </header>
+
+      <div class="panel-controls">
+
+        <fieldset class="section section-slim">
+          <legend>SIGNAL&nbsp;GEN</legend>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-wfd" tabindex="0" role="slider"
+                   aria-label="Waveform" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">WAVE&nbsp;FORM</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-tune" tabindex="0" role="slider"
+                   aria-label="Tune" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">TUNE</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-slim">
+          <legend>GATE&nbsp;/&nbsp;KORG35</legend>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-vfc" tabindex="0" role="slider"
+                   aria-label="Filter cutoff" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">CUTOFF</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-attack" tabindex="0" role="slider"
+                   aria-label="Attack" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">ATTACK</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-release" tabindex="0" role="slider"
+                   aria-label="Release" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">RELEASE</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-slim">
+          <legend>TRIGGER&nbsp;&middot;&nbsp;GEG</legend>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-gatt" tabindex="0" role="slider"
+                   aria-label="GEG attack" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">GEG&nbsp;ATT</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-grel" tabindex="0" role="slider"
+                   aria-label="GEG release" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">GEG&nbsp;REL</span>
+            </div>
+          </div>
+          <div class="mg-switch">
+            <button class="rocker rocker-sm" id="trig-mode" aria-pressed="false"><span class="rocker-cap"></span></button>
+            <span class="legend-sm">MULTIPLE</span>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-slim">
+          <legend>RESONATORS</legend>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-cv" tabindex="0" role="slider"
+                   aria-label="Resonator frequency" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">FREQUENCY</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-blend" tabindex="0" role="slider"
+                   aria-label="Resonator intensity" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">INTENSITY</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-slim">
+          <legend>ENSEMBLE</legend>
+          <div class="mg-switch">
+            <button class="rocker" id="ens-on" aria-pressed="true"><span class="rocker-cap"></span></button>
+            <span class="legend-sm">ON</span>
+          </div>
+        </fieldset>
+
+      </div>
+
+      <div class="scope-wrap" style="margin-top:14px">
+        <canvas id="scope" class="scope" width="640" height="110" aria-label="output spectrum"></canvas>
+        <div class="lamps" aria-hidden="true">
+          <span class="glow-lamp" id="trig-lamp"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="keybed" id="keybed" aria-label="keyboard"></div>
+  </section>
+
+  <footer class="caption">
+    <p>
+      The whole keyboard as ONE Faust program: 12 master oscillators feed phase-locked
+      octave dividers, and all 48 note channels - each with its own CD4007 gate
+      envelope and KORG35 cell - run every sample with <em>no voice allocation</em>,
+      exactly like the hardware. Keys just set the gate bitmask. The KBD trigger
+      conditioning (SINGLE holds through legato; MULTIPLE re-fires per attack) gates the
+      shared GEG&nbsp;&rarr;&nbsp;VCA, then resonators and ensemble. Octaves don't beat
+      - they're the same divider chain. Hold a fistful of keys.
+    </p>
+    <p><a class="hub-link" href="../">&larr; All boards</a></p>
+  </footer>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

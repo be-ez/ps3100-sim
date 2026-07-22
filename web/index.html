@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS-3100 - board bench pages</title>
+<link rel="stylesheet" href="lib/panel.css">
+<style>
+  .hub { max-width: 720px; }
+  .hub-head { text-align: center; margin-bottom: 26px; }
+  .hub-head .badge { justify-content: center; }
+  .hub-sub { font-size: 10px; letter-spacing: .22em; color: var(--legend-dim); margin-top: 8px; }
+  .bench-list { display: flex; flex-direction: column; gap: 14px; list-style: none; }
+  .bench-plate {
+    display: block;
+    text-decoration: none;
+    background: linear-gradient(180deg, var(--panel), var(--panel-lo));
+    border: 1px solid #000;
+    border-radius: 4px;
+    padding: 16px 20px;
+    box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 10px 24px rgba(0,0,0,.45);
+  }
+  .bench-plate:hover, .bench-plate:focus-visible {
+    outline: none;
+    border-color: var(--hairline);
+  }
+  .bench-plate:hover .bench-title, .bench-plate:focus-visible .bench-title { color: var(--amber); }
+  .bench-row { display: flex; align-items: baseline; gap: 14px; }
+  .bench-board { font-size: 10px; letter-spacing: .22em; color: var(--legend-dim); white-space: nowrap; }
+  .bench-title { font-size: 15px; letter-spacing: .18em; color: var(--legend); text-transform: uppercase; }
+  .bench-blurb { margin-top: 6px; font-size: 12px; line-height: 1.5; color: var(--legend-dim); }
+</style>
+</head>
+<body>
+
+<main class="room hub">
+  <header class="hub-head">
+    <div class="badge">
+      <span class="badge-model">PS&#8209;3100</span>
+    </div>
+    <div class="hub-sub">BOARD BENCH PAGES &middot; SPICE&#8209;VALIDATED FAUST &rarr; WEBASSEMBLY</div>
+  </header>
+
+  <ul class="bench-list" id="bench-list"></ul>
+
+  <footer class="caption">
+    <p>
+      Each board of the PS&#8209;3100 that reaches &ldquo;DSP matches SPICE&rdquo; gets a bench
+      page here: its panel section as playable hardware, a scope, and the same wasm build the
+      full instrument will compose.
+    </p>
+  </footer>
+</main>
+
+<script type="module">
+const { boards } = await (await fetch("./boards.json")).json();
+document.getElementById("bench-list").innerHTML = boards.map((b) => `
+  <li>
+    <a class="bench-plate" href="./${b.id}/">
+      <div class="bench-row">
+        <span class="bench-board">${b.board}</span>
+        <span class="bench-title">${b.title}</span>
+      </div>
+      <div class="bench-blurb">${b.blurb}</div>
+    </a>
+  </li>`).join("");
+</script>
+</body>
+</html>

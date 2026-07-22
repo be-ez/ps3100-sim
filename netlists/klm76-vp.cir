@@ -1,0 +1,138 @@
+* KLM-76 Voltage Processors (PS3100/3300) - SPICE reference
+*
+* Topology (per channel, ch2 in parentheses):
+*   - VPn IN (pin 19/20): panel INPUT jack tip, normalled to DIN pin 5 when
+*     unpatched. On the node: R222 (R227) 1M into the IC23a (IC23b) inverting
+*     input; R223 (R228) 100k down to the -4.97 V reference tap; and the TOP
+*     end of panel pot section A.
+*   - Panel CONTROLLER pot = dual-gang "LM" pot, sections A and B (the pins
+*     labeled LMA1/LMB1 = the two wiper returns of the ONE panel knob; full-
+*     res trace: both cold ends sit on the shared -5.00 V bus).
+*       section A: top = VPn IN, bottom = -5.00 V bus, wiper -> pin 23 (27)
+*                  -> R235 (R241) 1M -> mixer summing node.
+*       section B: top = LM1 (LM2) = inverted input, bottom = -5.00 V bus,
+*                  wiper -> pin 24 (28) -> R234 (R240) 1M -> summing node.
+*   - Input amp IC23a (IC23b), 1/2 4558 (1458 crossed out): inverting unity,
+*     R224 (R229) 1M feedback || C204 (C205) 0.001u -> one-pole lag at
+*     1/(2*pi*1M*1n) = 159 Hz on the NON-inverted path only; R225 (R230)
+*     470k from + input to G1; out via R226 (R231) 220R to pin 22 (21).
+*   - Output mixer IC24a (IC24b): summing node takes R234 + R235 1M wiper
+*     returns, R236 (R242) 3M (3.3M crossed out) from +14.9 V (boxed 5),
+*     feedback R237 (R243) 1M, + input via R238 (R244) 330k to G1; out via
+*     R239 (R245) 220R to PROCESSOR n OUT (pin 25/26).
+*   - References: two 3:1 dividers. Left (unlabeled designators, revision
+*     triangles): -15 V -> 2K (2.2K crossed out) -> tap -> 1K -> G1 =
+*     -5.000 V, feeding all four pot cold ends. Right: -14.9 V -> R246 2K ->
+*     tap -> R247 1K (1.2K crossed out) -> G1 = -4.967 V, feeding R223/R228.
+*
+* Design intent decoded: with the gang wired in
+* opposition (section B wiper fraction g toward LM, section A wiper 1-g
+* toward VPn IN) the two -5 V pot pedestals always sum to exactly one 5 V
+* unit, which the R236 3M / +14.9 V injection (-14.9/3 = -4.967 V at the
+* output) cancels: OUT = (2g-1)*Vin + 0.03 V - a panel attenuverter, CCW
+* full inversion, CW full non-inverting, center null.
+*
+* Uncertain values:
+*   - rpot: the LM pot resistance is NOT on this sheet (panel part). 50k
+*     assumed; pot loading sags the -5.00 bus (667R Thevenin) by ~0.25 V at
+*     50k, scaling ~1/rpot - the model's largest unknown.
+*   - Gang direction (ka = 1-kb) is inferred from the offset-cancellation
+*     algebra and the panel draft's single CONTROLLER knob (page 0023); the
+*     drawing itself does not encode it. Sections are parameterized
+*     independently here so tests can probe the general two-section law.
+*   - The VP2 input selector switch (VP2 IN <- VP1 jack bus or VP2's own
+*     jack) and the DIN routing are panel details, modeled as a plain
+*     source with series {rsrc} (220R when arriving via the DIN bus jacks).
+*
+* Parameters (rewritten on ONE line by tests):
+*   vin1/vin2 : source voltages at the INPUT jacks (panel -5..+5 V scale)
+*   ka1/kb1   : ch1 pot section wiper fractions toward the SIGNAL (top) end;
+*               panel knob g maps to kb = g, ka = 1 - g
+*   ka2/kb2   : ch2 likewise
+*   rpot      : LM pot end-to-end resistance (both sections; UNKNOWN, 50k)
+*   rsrc      : source series resistance (1 mOhm = patched low-Z jack;
+*               220 = DIN bus feed; 1G ~= unpatched/open input)
+*   rload     : load on PROCESSOR OUT pins (1G ~= unloaded panel jack)
+.param vin1=0 vin2=0 ka1=0 kb1=1 ka2=0 kb2=1 rpot=50k rsrc=1m rload=1G
+
+* rail-limited opamp (1/2 4558 on +/-14.9V rails, swing ~ +/-13.4V): bounded
+* tanh keeps clipping physical; AC linearizes to gain 1e6 (house style)
+.subckt opamp inp inn out
+B1 out 0 V = 13.4*tanh(1e6*(v(inp)-v(inn))/13.4)
+.ends
+
+* supplies (boxed 5 = +14.9V, boxed 3 = -14.9V after the R200 10R / C200
+* 100u rail filter, modeled ideal; the left divider's terminal is drawn
+* -15 V as-scanned, kept distinct from the -14.9 rail on purpose)
+VP5 vp149 0 14.9
+VN3 vn149 0 -14.9
+VM15 vm15 0 -15
+
+* reference dividers
+* left (unlabeled, 2K crossed from 2.2K / 1K): -15 -> refp = -5.000 V bus
+RDP1 vm15 refp 2k
+RDP2 refp 0 1k
+* right (R246 2K / R247 1K crossed from 1.2K): -14.9 -> refw = -4.967 V
+R246 vn149 refw 2k
+R247 refw 0 1k
+
+* ---- channel 1 ----
+VIN1 src1 0 DC {vin1} AC 1
+RSRC1 src1 in1 {rsrc}
+R223 in1 refw 100k
+* input amp IC23a: inverting 1M/1M with C204 1n lag (159 Hz)
+R222 in1 sj1 1meg
+R224 sj1 lm1o 1meg
+C204 sj1 lm1o 1n
+R225 p1 0 470k
+XI23A p1 sj1 lm1o opamp
+R226 lm1o tb1 220
+* LM pot section B: top = LM1 (pin 22), bottom = -5.00 bus, wiper = pin 24
+RB1T tb1 wb1 {max(rpot*(1-kb1),1)}
+RB1B wb1 refp {max(rpot*kb1,1)}
+* LM pot section A: top = VP1 IN (pin 19), bottom = -5.00 bus, wiper = pin 23
+RA1T in1 wa1 {max(rpot*(1-ka1),1)}
+RA1B wa1 refp {max(rpot*ka1,1)}
+* output mixer IC24a
+R234 wb1 mj1 1meg
+R235 wa1 mj1 1meg
+R236 mj1 vp149 3meg
+R237 mj1 out1 1meg
+R238 q1 0 330k
+XI24A q1 mj1 out1 opamp
+R239 out1 pout1 220
+RL1 pout1 0 {rload}
+
+* ---- channel 2 (mirror) ----
+VIN2 src2 0 DC {vin2}
+RSRC2 src2 in2 {rsrc}
+R228 in2 refw 100k
+R227 in2 sj2 1meg
+R229 sj2 lm2o 1meg
+C205 sj2 lm2o 1n
+R230 p2 0 470k
+XI23B p2 sj2 lm2o opamp
+R231 lm2o tb2 220
+RB2T tb2 wb2 {max(rpot*(1-kb2),1)}
+RB2B wb2 refp {max(rpot*kb2,1)}
+RA2T in2 wa2 {max(rpot*(1-ka2),1)}
+RA2B wa2 refp {max(rpot*ka2,1)}
+R240 wb2 mj2 1meg
+R241 wa2 mj2 1meg
+R242 mj2 vp149 3meg
+R243 mj2 out2 1meg
+R244 q2 0 330k
+XI24B q2 mj2 out2 opamp
+R245 out2 pout2 220
+RL2 pout2 0 {rload}
+
+.control
+dc VIN1 -20 20 0.1
+wrdata vp_dc1.txt v(pout1) v(pout2) v(wa1) v(wb1) v(lm1o) v(refp) v(in1) i(VIN1)
+dc VIN2 -20 20 0.1
+wrdata vp_dc2.txt v(pout1) v(pout2)
+ac dec 100 1 100k
+wrdata vp_ac.txt vdb(pout1) vdb(pout2)
+.endc
+
+.end

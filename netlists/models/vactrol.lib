@@ -1,0 +1,14 @@
+* P873D vactrol (LED + LDR optocoupler) - static model
+* Full on-scan marking (KLM-76 VCA / KLM-63 MOD-VCA sheets): HTV P873-G35-201B
+*
+* Phase 1: the CV-controlled element is modeled as a plain resistance R,
+* the steady-state LDR resistance for a given LED drive (plan Phase 1 step 3).
+* Useful range on the KLM-62: roughly 1k (bright) .. 1M (dark).
+*
+* Dynamics (fast attack ~ms, slow resistance-dependent decay ~10..100s of ms)
+* are modeled at the DSP layer (dsp/vactrol.dsp, plan Phase 3b). If a SPICE
+* transient model is needed later, replace RLDR with a behavioral resistor
+* driven by an RC lag network on the LED current.
+.subckt P873D p n R=47k
+RLDR p n {R}
+.ends

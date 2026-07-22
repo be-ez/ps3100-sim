@@ -1,0 +1,300 @@
+* KLM-69E GATE (PS3100/PS3300) - one representative note channel
+* (x101..x112) are identical; this deck models one, plus the shared FC-bus
+* trim and one output group mixer.
+*
+* Signal chain (per note):
+*   sig gen (pins 34-23) -> CD4007AE note switch/VCA (IC101-112)
+*   -> C301 0.0022u -> KORG35 low-pass cell (IC201-212, 8-pin module)
+*   -> C601 33u -> Q401 "color select" gate -> group bus -> IC1/IC2 mixer
+*   -> U OUT / L OUT
+* Envelope: key line -> Q101/Q201/D201 -> C201 1u (attack RC), R401 4.7M
+* (release bleed) + Q301 release-bus damp; buffered by two 1/4 LM324
+* (IC11-16): the first section (+ input on C201) FOLLOWS the envelope for the
+* CD4007 amplitude gate, the second (R601/R1201 330k inverting) drives the
+* CD4007 gate + Q401. The EXPAND path (R501 33k + D301, from the shared IC3
+* EXPAND bus, pin 37) applies the per-note envelope to the KORG35 pin-1 input
+* node -> the signature per-note cutoff pluck. Shared-bus states parameterized:
+*   Vexp - EXPAND depth (per-note envelope -> cutoff), 0 = off (baseline)
+*   Vrel - KLM-62D GATE RELEASE TERMINAL (11.6 full release .. 0.14 damped)
+*   Ratk - conditioned ATTACK charge path;  Venv - conditioned SUSTAIN/hold
+*
+*
+* KORG35 module internals are NOT on the scan (sealed 8-pin module:
+* 5 transistors + 6 resistors). They are reproduced here from the circuit
+* disclosed in 2000 for the MS-10/early MS-20 (analyzed in
+* T. Stinchcombe, "A Study of the Korg MS10 & MS20 Filters", 2006, fig. 1):
+*   - Q1 base-collector junction + R3 470k from V+: current splitter that
+*     steers an exponential base current into Q2/Q3 (tanh law, ~17.9 mV/oct
+*     at the internal node). The MS-10's 47k/680 external CV divider does
+*     NOT exist on the PS-3100: the FCU/FCL buses arrive already attenuated
+*     to mV scale at ~14.5R source impedance, land on module pin 2 directly through
+*     the R15-R20 1R blend ladder, and R1001-1012 47R per note returns the
+*     pin to signal ground (the 680's role). RESOLVED 2026-07-21 by the
+*     KLM-63 model + a full-res re-read of this sheet's trim corridor.
+*   - Q2/Q3 in REVERSE SATURATION as current-controlled resistors,
+*     R ~= VT/(BR*IB); these are the two Sallen-Key resistors. They are the
+*     first devices to leave saturation as drive rises (|i| -> BR*IB):
+*     the cell's dominant, asymmetric nonlinearity.
+*   - Q4 (JFET) + Q5 (PNP) compound source follower, gain k1 ~ 0.99: the
+*     Sallen-Key unity buffer. Its gain deficit (1-k1) caps the resonance.
+* PS-3100 external cell wiring (from the scan, trim corridor re-read at
+* full res 2026-07-21):
+*   pin1 in, pin2 FC CV (direct FCU/FCL blend tap + R100x 47R to G2 - the
+*   47R was previously misplaced as pin-3/6 supply decoupling), pin3/pin6
+*   -14.9V rail, pin4 mid node, pin5 buffer-in node, pin7 out, pin8 +14.9V
+*   via VR1 470R trim (C11 33u).  [pin roles inferred, see doc]
+*   C501 0.033u  pin4 -> pin7   (SK cap 1, mid -> buffered output)
+*   C401 0.001u  pin5 -> NX     (SK cap 2, revised from 330p; NX = its
+*                                return node, 330R to signal ground)
+*   NX -> C701 470p -> NY (Q401 base bias node: R901 1M return, R701 1M to
+*   the input node); NX -> C901 4.7n -> R1301 470k -> shared PEAK bus
+*   (C9 0.1u from the group mixer closes a global resonance-raising loop;
+*   R43 10k -> pin 5 "PEAK" = panel shunt; see R330/PEAK comments below).
+* Values that were revised on the sheet carry the final (triangle) value.
+*
+* Parameters (tests substitute this line, ac_analysis.py style). Vfcu is
+* the OPEN-CIRCUIT blended FCU/FCL bus voltage (KLM-63 law output, physical
+* range -0.47..+0.11 V); the default -0.1371 V puts the loaded CV pin at
+* -47 mV (f0 ~ 1.6 kHz, mid-law) and is exactly what dsp/gate.dsp's
+* default vfc=-6 maps to:
+.param Vfcu=-0.1371 Venv=10 Vkey=10 Ratk=100k Rtrim=235 Rpeak=1e9 Asig=0.02 Fsig=500 Colork=100k Vexp=0 Vrel=11.6
+* Derived shared-bus laws (secondary .param lines survive the tests' first-line
+* substitution). Release-bus damp conductance from the KLM-62D terminal voltage
+* Vrel: 0 at +11.6 V full release,
+* gdmax at the +0.14 V damped floor, linear through the +5.8..8.0 V half-damp
+* shelf. gdmax=5e-5 S sets the damped release tau ~= C201/gdmax = 20 ms.
+.param Vrelfull=11.6 Vreldmp=0.14 gdmax=5e-5
+.param gdmp='gdmax*max(0,(Vrelfull-Vrel)/(Vrelfull-Vreldmp))'
+.param Rdmp='1/(gdmp+1e-12)'
+
+* rails (post 47R/22R supply feeds R12/R13, C1..C3: modeled as ideal 14.9V)
+VDD vp 0 DC 14.9
+VSS vn 0 DC -14.9
+
+* ideal opamp for the group mixer (house style, klm62-resonator.cir)
+.subckt opamp inp inn out
+E1 out 0 inp inn 1e6
+.ends
+
+* device models
+* 2SC945-class NPN; BR=4 is the 2SC1623 PSpice value (Stinchcombe): the
+* reverse beta sets the current-controlled resistance VT/(BR*IB) and the
+* reverse-saturation clip point. [UNCERTAIN: 2SC945 BR not published]
+.model q945 NPN(IS=10f BF=200 BR=4 VAF=100 CJC=4p CJE=8p TF=0.4n)
+.model qa733 PNP(IS=10f BF=180 VAF=80)
+* Q1's base-collector junction used diode-connected in the splitter
+.model djunc D(IS=10f N=1)
+.model dsig D(IS=2.5n N=1.7)   ; 1S1588-class small-signal Si
+* CD4007AE p-channel pass device (functional model; see note below)
+.model p4007 PMOS(VTO=-2 KP=0.4m LAMBDA=0.01)
+* key charge switch (Q101/Q201/D101/D201 level shifters, simplified)
+.model swkey SW(RON=1 ROFF=1e9 VT=5 VH=0.5)
+
+* ---------------------------------------------------------------- envelope
+* Functional transcription [UNCERTAIN: exact CD4007 pin usage for the
+* charge path is congested on the scan; the RC values are as printed]:
+*   attack: key on -> C201 charged from the conditioned ATTACK bus through
+*           R301 100k (Ratk param: the shared Q1/Q2/IC3 conditioning that
+*           scales this with the panel ATTACK CV is NOT transcribed)
+*   release: C201 bleeds through R401 4.7M (plus DECAY/Q301 damp paths,
+*           not modeled -> longest-release case)
+Vkey key 0 DC {Vkey}
+Vatk atkbus 0 DC {Venv}
+RCH atkbus natk {Ratk}
+SATK natk natk2 key 0 swkey
+DATK natk2 envc dsig         ; D201: charge only through the switch
+C201 envc 0 1u
+R401 envc 0 4.7Meg
+* Release-bus consumption (task: the KLM-62D "GATE RELEASE TERMINAL" -> this
+* board's pin 6 -> shared Q313 (2SC945, R37-R42) -> per-note Q301 damp).
+* Q301's collector sits on C201 (envc) and its saturated pull-down (through
+* Q313 to the -14.9 V rail) is the fast-discharge damp; Q313's base is driven
+* from the release terminal through R38 100k. Modeled functionally: a parallel
+* discharge path across C201 whose conductance rises as the terminal falls from
+* +11.6 V (full release, Q301 off) to +0.14 V (damped, Q301 saturated). The
+* half-damp shelf (+5.8..8.0 V) lands mid-conductance. [FUNCTIONAL: the exact
+* Q313/Q301 base-network sign is inferred from the scan; the interface levels
+* and the full-release=4.7M limit are the anchored facts. See doc.]
+Vrelbus vrel 0 DC {Vrel}      ; release terminal state (documentation node)
+* The Q313 trigger/hold logic (pins 8 KEY TRIG, 35 HOLD) inhibits the damp
+* while the key is held, so during attack/sustain C201 charges normally; the
+* damp only engages after key release, at the Vrel-set rate. Modeled as a
+* key-gated discharge: switch conducts when the key line is low (released),
+* Rdmp then sets the release tau (=inf at full release -> R401 4.7M only,
+* ~20k at the damped floor). [HOLD sustain-latch not modeled; flagged.]
+Bkeyn keyn 0 V = '10 - V(key)'          ; key-off sense for the damp gate
+Sdamp envc ndmp keyn 0 swdamp           ; on when released (keyn high)
+.model swdamp SW(RON=1 ROFF=1e12 VT=5 VH=0.5)
+Rdamp ndmp 0 {Rdmp}           ; Q301 damp: {Rdmp}=inf full release, 20k damped
+* envelope buffer: IC11-16 two 1/4-LM324 sections, 330k/330k -> unity here
+EENV env 0 envc 0 1
+* inverted gate line: drives the CD4007 gate and the D301 choke so that
+* env high = channel open. [UNCERTAIN: the second 324 section's exact
+* topology; an inverting 330k/330k stage referenced to +14.9V fits the
+* parts and produces this line]
+EENVN envn 0 VALUE={14.9 - 1.6*V(envc)}
+
+* ---------------------------------------------------------------- gate VCA
+* CD4007 pass transistor, gate driven by the inverted envelope line.
+* Functional model of the note switch: at env=10V the device is a ~1.3k
+* series resistor, at env=0 it is off. Audio rides at the sig-gen DC.
+Vsig nsig0 0 DC 7.45 AC 1 SIN(7.45 {Asig} {Fsig})
+Rsg nsig0 nsig 1k
+M1 nvca envn nsig nsig p4007
+CFEED nsig nvca 0.5p         ; switch stray/junction feedthrough (order of
+*                              magnitude of a CD4007 off-state capacitance)
+RVCA nvca nvcab 100k
+VBIAS nvcab 0 DC 7.45
+
+* ---------------------------------------------------------------- KORG35
+* input coupling and per-note EXPAND cutoff sweep
+C301 nvca ni 0.0022u
+* EXPAND path (task: the signature per-note pluck), traced full-res 2026-07-21.
+* Confirmed topology: panel EXPAND (pin 37) -> R14 10k -> IC3 (1/4 LM324,
+* shared, unity buffer) -> shared EXPAND CV bus -> per note R501 33k -> D301
+* -> module pin-1 input node NI (spine junction dots verified: R501 bottom and
+* D301 sit on NI, C301 audio and R701 feedback join the same node). The gate
+* envelope, scaled by the EXPAND depth Vexp, pulls NI DOWN through R501+D301,
+* which raises that note's KORG35 cutoff (SPICE-measured: pulling NI negative
+* moves the reverse-mode splitter operating point so f0 climbs; +0.5V of NI
+* pull-down = ~+1.5 oct at the mid-law default). As the envelope decays the
+* cutoff falls back = the pluck. D301 (anode NI, cathode toward the bus) also
+* still does the anti-thump job: at note-off the injection returns to 0 and it
+* clamps NI, discharging the C301 DC. When Vexp=0 the diode is reverse/zero-
+* biased and blocks the 33k -> NI has its bare high-Z input impedance and the
+* baseline AC response (and the C301 tracking HPF) is UNCHANGED (verified:
+* f0/peak/Q identical to the pre-EXPAND deck).
+*  - Polarity note: the pluck is BRIGHT (cutoff up on attack), the classic
+*    PS-3100 sound; this is the negative-NI-injection branch. Whether the sign
+*    is set by the IC3 buffer or by tapping the inverted (2nd LM324) envelope
+*    line is congested on the scan; the bright-pluck sign is the modeling
+*    choice (flagged). A positive injection gives the opposite (dark) sweep.
+*  - Vexp is the |NI pull-down| at full envelope (V); default 0 = EXPAND off.
+*    Graceful monotone range 0..~0.9 V (above ~1.1 V the cell runs out of
+*    control-current headroom and the peak collapses, verified in SPICE).
+Bexp nexp 0 V = '-Vexp*V(envc)/10'   ; per-note envelope x EXPAND depth (IC3 bus)
+R501 nexp nmid 33k                   ; R501-512 33k EXPAND coupling
+D301 ni nmid dsig                    ; anode NI, cathode toward the bus (bright)
+* DC reference for the module input node. The splitter's exponential CV law
+* only works if ni is held near ground at DC (otherwise the nA base currents
+* through the 2M R701/R901 path servo the control away - verified in SPICE:
+* sensitivity drops from ~0.8 oct/V to ~0.1 oct/V). Full-res re-read
+* 2026-07-21: the two IC11-16 (1/4 LM324) sections are the envelope FOLLOWER
+* (first, + input on C201) and the inverting GATE driver (second, R601/R1201
+* 330k, drives the CD4007 gate and Q401) - NOT a servo, as an earlier pass had
+* assumed. So the DC hold at ni comes from R501/D301 (EXPAND, above) plus the
+* Q2 emitter self-bias, not a dedicated integrator. The soft ground here is
+* kept as a modeling stand-in for that self-bias (10 kH choke + 10k: near
+* ground at DC, >1M above 20 Hz so it does not touch the tracking HPF).
+* [wiring of the DC hold now UNRESOLVED rather than mis-attributed; flagged]
+LSRV ni nsrv 10kH
+RSRV nsrv 0 10k
+* cutoff CV interface (module pin 2). Full-res re-read 2026-07-21: the
+* MS-10 47k/680 divider does not exist here. FCU (pin 42) and FCL (pin 41)
+* are stiff mV buses (KLM-63 750/1k/15 pads, 14.49/14.56 R sources) bridged
+* on this board by the R15-R20 1R ladder whose 12 taps feed the notes'
+* module pin 2 DIRECTLY - so every note sees ~the impedance-weighted mean
+* of FCU/FCL (the 1R steps span only ~6R against 29R of pad impedance:
+* ~8% of the FCU-FCL difference end to end). R1001-1012 47R returns each
+* pin-2 node to signal ground G2: it sinks the splitter's ~30uA diode bias
+* (the MS-10 680's job) and, against the bus source impedance, sets the CV
+* attenuation. Vfcu is the OPEN-CIRCUIT blended bus voltage; this network
+* reproduces the 12-note loaded operating point for one (center) note:
+VFC fcth 0 DC {Vfcu}
+RBUS fcth fcb 7.3            ; FCU pad || FCL pad (14.49||14.56) common source
+RSH11 fcb 0 4.27             ; the other 11 notes' 47R returns (47/11)
+RNOTE fcb ncv 1.0            ; this note's ladder-position share (order 1R)
+R1001 ncv 0 47               ; per-note return to G2. Re-read: previously
+*                              misplaced as pin-3/6 supply decoupling; the
+*                              scan-doc "47k" guess and a series-47k reading
+*                              are both falsified - 47k in series against
+*                              the 30uA splitter bias lifts pin 2 by ~1.4V
+*                              and servos the law flat (0.5 oct over the
+*                              whole bus range, verified in SPICE)
+* Net DC attenuation ncv/Vfcu = 0.342, source at ncv ~8R: pin 2 rides at mV
+* scale and the exponential tanh splitter law (Stinchcombe sec. 3.2) works
+* exactly as in the MS-10 - the divider was moved to the bus side.
+* R501-512 33k (EXPAND) does NOT tap the FC bus or pin 2 (confirmed: 33k into
+* the 14.5R-source pin-2 bus is swamped, ~mV, and moves f0 by <0.01 oct in
+* SPICE). It runs from the shared IC3 EXPAND bus to the module pin-1 input
+* node NI - now MODELED above (the Bexp/R501/D301 block near C301), no longer
+* deferred. The old worry that a bare 33k at NI would gut the tracking bass
+* response is real (a permanent 33k to ground at NI raises f0 to 2 kHz and the
+* HPF, verified) but the series D301 blocks it whenever EXPAND is idle, so the
+* baseline is preserved and the coupling only bites while the note sweeps.
+
+* module supply: pin 8 via VR1 470R trim (C11 33u), pin 3/6 to -14.9V
+* (directly - the 47R formerly here is the pin-2 ground return, see above)
+RVR1 vp k8 {Rtrim}
+C11 k8 0 33u
+VK6 k6 vn DC 0               ; pin 3/6 tied to the -14.9V rail
+
+* exponential splitter: R3 470k feed, Q1 B-C junction vs Q2/Q3 bases
+R3 k8 nb 470k
+DQ1 nb ncv djunc
+* Sallen-Key "resistors": reverse-saturated Q2, Q3 (C,B,E) - emitter faces
+* the source side per the reverse-mode convention [orientation ASSUMED,
+* affects only the clip asymmetry direction]
+Q2 nm nb ni q945
+Q3 n2 nb nm q945
+* SK capacitors (per-note, from the scan)
+C501 nm no 0.033u
+C401 n2 nx 0.001u
+* buffer: JFET + PNP compound follower (module internals, disclosed ckt)
+J4 nd n2 ns0 j2sk30
+.model j2sk30 NJF(VTO=-1.2 BETA=1.2m LAMBDA=4m)
+R4 k8 nd 10k
+Q5 no nd k8 qa733
+R5 ns0 no 820
+R6 ns0 ns1 10k
+R89 ns1 k6 1k
+* output coupling into the color-select gate
+C601 no nodea 33u
+RBLD nodea 0 10Meg           ; Q401 base-network bleed (DC path when gated off)
+* resonance / PEAK network (per-note halves + shared bus).
+* R330: the scan draws the 330R in the output column, but its designator is
+* the sheet's known R301~/R8xx collision (see scan doc "Uncertain"). Wired
+* output->NX it pins the C401 return to the buffer output, which makes
+* C401/C701/C901 all inert and yields Q=0.53 with no PEAK action (verified
+* in SPICE); wired NX->ground it forms the classic unity-gain Sallen-Key
+* return and yields the KORG35 Q~2.5. The latter reading is used. [FLAGGED]
+R330 nx 0 330
+C701 nx ny 470p
+R901 ny 0 1Meg               ; [ASSUMED return: color-select DC bus at ~0V]
+R701 ny ni 1Meg
+C901 nx npk1 0.0047u
+R1301 npk1 pkbus 470k
+* PEAK: global resonance loop. C9 couples the (inverting) group mixer back
+* onto the shared bus; each channel receives it through R1301/C901 into the
+* C401 return node NX, adding positive feedback around every KORG35 cell at
+* once. The panel PEAK pot (through pin 5 / R43) shunts the bus: Rpeak
+* large = maximum resonance. [Bus-side wiring of C9/C10/R43 read from a
+* congested corner - topology chosen as the only reading that makes the
+* panel PEAK control functional; flagged in the doc]
+C9 mixo pkbus 0.1u
+R43 pkbus peak 10k
+C10 peak 0 1u
+RPK peak 0 {Rpeak}
+
+* ------------------------------------------------------- output group mixer
+* Q401 color-select gate: envelope-gated series switch onto the group bus
+* [SIMPLIFIED: the scan draws Q401 with base bias from R901/R701 and the
+* 470p; modeled as an ideal switch driven by the envelope]
+SQ401 nodea bus env 0 swkey
+* IC1/IC2 4558 inverting mixer; R25-R28 feedback per color table:
+* ORANGE 120k / YELLOW 100k / GREEN 82k / BLUE 68k (Colork param)
+R21 bus nsum 100k
+R25 nsum mixo {Colork}
+XMIX 0 nsum mixo opamp
+R29 mixo w1 10k
+C5 w1 w2 10u
+R44 w2 out 220
+RLOAD out 0 100k
+
+.control
+op
+ac dec 100 10 100k
+wrdata gate_ac.txt vdb(out) vdb(nodea) vdb(no) vdb(ni)
+.endc
+
+.end

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS-3100 GEG - KLM-76 in the browser</title>
+<link rel="stylesheet" href="../lib/panel.css">
+</head>
+<body>
+
+<main class="room">
+
+  <section class="unit" aria-label="PS-3100 GEG panel">
+
+    <div class="panel">
+
+      <header class="panel-head">
+        <div class="badge">
+          <span class="badge-model">PS&#8209;3100</span>
+        </div>
+        <div class="badge-sub">POLYPHONIC SYNTHESIZER &middot; GENERAL&nbsp;ENVELOPE&nbsp;GENERATOR &middot; KLM&#8209;76</div>
+        <div class="power-block">
+          <span class="lamp power-lamp" id="power-lamp" aria-hidden="true"></span>
+          <button class="rocker" id="power" aria-pressed="false">
+            <span class="rocker-cap"></span>
+          </button>
+          <span class="legend-sm">POWER</span>
+        </div>
+      </header>
+
+      <div class="panel-controls">
+
+        <fieldset class="section section-resonator">
+          <legend>GEG</legend>
+          <div class="scope-wrap">
+            <canvas id="scope" class="scope" width="640" height="110" aria-label="envelope"></canvas>
+            <div class="lamps" aria-hidden="true">
+              <span class="glow-lamp" id="env-lamp"></span>
+            </div>
+          </div>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob" id="knob-delay" tabindex="0" role="slider"
+                   aria-label="Delay time" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">DELAY&nbsp;TIME</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob" id="knob-attack" tabindex="0" role="slider"
+                   aria-label="Attack time" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">ATTACK&nbsp;TIME</span>
+            </div>
+            <div class="knob-unit">
+              <div class="knob" id="knob-release" tabindex="0" role="slider"
+                   aria-label="Release time" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">RELEASE&nbsp;TIME</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="section section-variant">
+          <legend>PATCH&nbsp;&middot;&nbsp;GEG&nbsp;OUT&nbsp;&rarr;&nbsp;VCA</legend>
+          <div class="knob-row">
+            <div class="knob-unit">
+              <div class="knob knob-small" id="knob-level" tabindex="0" role="slider"
+                   aria-label="Drone level" aria-valuemin="0" aria-valuemax="1"></div>
+              <span class="legend-sm">LEVEL</span>
+            </div>
+          </div>
+          <p class="chip-note">trapezoid CV gates<br>a saw drone</p>
+        </fieldset>
+
+      </div>
+    </div>
+
+    <div class="keybed" id="keybed" aria-label="keyboard"></div>
+  </section>
+
+  <footer class="caption">
+    <p>
+      The KLM&#8209;76 General Envelope Generator of the PS&#8209;3100: a
+      current-steering trapezoid - hold a key and the CV (0&nbsp;&rarr;&nbsp;+5.87&nbsp;V traced) waits out
+      <span class="cap">DELAY</span>, ramps up at the <span class="cap">ATTACK</span> rate,
+      sustains, and falls at the <span class="cap">RELEASE</span> rate when you let go.
+      The scope draws the CV itself; patched here onto a saw drone's gain, the same
+      GEG&nbsp;OUT&nbsp;&rarr;&nbsp;VCA&nbsp;CONT normal as the real panel.
+    </p>
+    <p><a class="hub-link" href="../">&larr; All boards</a></p>
+  </footer>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

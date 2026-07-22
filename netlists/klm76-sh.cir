@@ -1,0 +1,188 @@
+* KLM-76 SAMPLE & HOLD (PS3100/3300) - SPICE reference
+* Clock oscillator re-traced transistor-by-transistor from the 500 dpi scan
+* (2026-07-21 full-res re-read); the earlier functional Schmitt model is gone.
+*
+* Topology (scan blocks 1..6):
+*   - clock oscillator (traced): Q3/Q4 (2SC945, marked PAIR) form an
+*     exponential converter: Q4 is diode-connected (B=C) with its emitter at
+*     node E4, biased by R5 10M from the +14.9V rail into the common base
+*     node M; Q3 (emitter to G1, same base M) sinks
+*     Ic3 = I(R5)*exp(V(E4)/VT) from the timing node CT through R10 1k.
+*     E4 is set by the panel CLOCK FREQ pot (10KB across +10V, wiper to
+*     pin 7) through R9 100k, VR1 100k (FREQ.ADJ, across G1..-14.9V) through
+*     R11 100k, and R12 1.5k to G1 - a ~1.5k node, so the 0..10V pot spans
+*     ~146 mV at E4 => an EXPONENTIAL rate law (~e^5.6 ~ 270:1 range), and
+*     the clock NEVER stalls (exponential current is never zero).
+*     C6 0.1u hangs from the +14.9V rail to CT: Q3's sink ramps CT down.
+*     Q1 (2SA564A-R, PNP: E to rail, C to node F) and Q2 (2SC945: E to CT,
+*     C to Q1's base) form a complementary latch cross-coupled at node K;
+*     R7 10M ties F to the R6 4.7k / R8 4.7k half-rail divider node S
+*     (~7.45V), D1 F->B (B = Q2 base), D2 B->S. CT ramps down until
+*     Vbe2 = V(B)-V(CT) fires the latch; the rail->Q1->D1->Q2 path recharges
+*     C6 fast (CT snaps up to ~rail-1.3V) while D2 dumps the latch current
+*     into S; once C6 is charged the ~mA D2 load can no longer be sustained
+*     by Q2 (its emitter current collapses to Q3's uA sink), the latch drops
+*     out and the ramp restarts. SYNC IN (pin 8) couples into S through
+*     C5 0.1: a positive edge lifts F (via R7) and B (via D1) and fires the
+*     latch early - external sync capture.
+*   - pulse shaping IC1a (1/2 4558; 1458 crossed out): CT's rising snap
+*     couples through C7 0.01 into node P, biased at
+*     -14.9*R13/(R13+R14) = -1.35V by R13 100k (to G1) / R14 1M (to -14.9V);
+*     IC1a (+ input P, - input G1, no feedback = comparator) swings hard
+*     positive until P decays below 0: sampling pulse width
+*     = C7*(R13||R14)*ln(dCT/1.35) ~ 1.5 ms.
+*   - S&H core: S/H IN (pin 6) -> R15 10k -> IC1b non-inverting buffer
+*     (R16 100k to G1, R17 10k feedback => gain 1 + 10k/100k = 1.1x),
+*     through Q7 2SK30-GR JFET series switch (gate via R19 100k, D3 anode at
+*     the gate, cathode at the pulse) onto hold cap C9 0.1u, buffered by IC2
+*     CA3140T (MOS input, Ib ~ 10 pA => droop Ib/C9 ~ 0.1 mV/s), R25 470 to
+*     S/H OUT (pin 5). VR2/R26 offset null not modeled (ideal op-amp).
+*   - sync out (traced): the squarer input is IC1b's OUTPUT (the 1.1x
+*     buffered S/H input), NOT the clock: bout -> R18 100k -> Q6 (CE, R22
+*     100k load to +14.9V) -> Q5 (CE, R23 10k load to +15V per revision
+*     triangle-1; the +14.9V feed is crossed out) -> R24 470 -> SYNC OUT
+*     (pin 4) / panel SYNCHRO jack. The jack contact normals pin 4 back to
+*     pin 8 (SYNC IN), so unplugged the clock can sync to the squared input
+*     signal's rising edges; the drawn lever state is ambiguous, so the
+*     default deck leaves SYNC IN unplugged (C5 far plate open).
+*   - S/H indicator: pulse -> D4 -> R27 330k -> C8 0.1 || R21 1M -> Q8,
+*     collector R20 1k to S/H IND (pin 9), LED returning to +15V.
+*   - power: +/-15V through R1..R4 10R / C1..C4 100u to the +/-14.9V rails;
+*     the oscillator and squarer draw from rail1/rail3 as drawn.
+*
+* Test-overridable parameters (tests/test_sh_spice.py regex-substitutes this
+* line, the Vin line, the Rsync line, and the tran line):
+.param vpot=5 ibias=10p vindc=2
+
+* --- calibration (the one fitted constant) ---
+* VR1 FREQ.ADJ wiper position, 0 = G1 end .. 1 = -14.9V end. Everything else
+* is transcribed; vr1pos is set (like the real trimmer) so the pot center
+* (vpot=5) gives the panel annotation "~1.2 Hz AT CENTER POSITION".
+.param vr1pos=0.512
+* start the timing cap at the top of the ramp: the DC operating point is a
+* metastable latch equilibrium (Q2 sourcing exactly Q3's sink current) whose
+* escape time is arbitrary; real hardware leaves it on noise, the sim needs a
+* deterministic first cycle. The hold cap is likewise pinned to its physical
+* power-up state (uncharged): its DC value is otherwise an arbitrary
+* gmin-leakage balance across the off JFET.
+.ic v(ct)=13.5 v(hold)=0
+
+* ideal opamp: VCVS, open-loop gain 1e6 (house style, klm62-resonator.cir)
+.subckt opamp inp inn out
+E1 out 0 inp inn 1e6
+.ends
+
+* 2SK30A-GR: Idss ~ 4 mA (GR rank 2.6..6.5 mA), Vp ~ -1.5V (datasheet-typical,
+* exact rank curves ASSUMED; Ron = 1/(2*Beta*|Vto|) ~ 185 ohm)
+.model J2SK30 NJF(Beta=1.8m Vto=-1.5 Lambda=2m Is=1e-14)
+* small-signal diodes D1..D4: types not marked on scan; 1N4148-class ASSUMED
+* (junction capacitance included: it carries the sync kick into node B)
+.model DSW D(Is=2.5n Rs=1 Cjo=2p)
+.model QC945 NPN(BF=300 Is=1e-14 Cje=10p Cjc=4p Tf=0.5n)
+* 2SA564A-R: generic small-signal PNP parameters ASSUMED
+.model QA564 PNP(BF=180 Is=1e-14 Cje=15p Cjc=8p Tf=1n)
+.model DLED D(Is=1e-18 N=2)
+
+* ---------------- power rails (block 6) ----------------
+V15p vcc 0 15
+V15n vee 0 -15
+R1 vcc rail1 10
+C1 rail1 0 100u
+R2 vcc rail2 10
+C2 rail2 0 100u
+R3 vee rail3 10
+C3 rail3 0 100u
+R4 vee rail4 10
+C4 rail4 0 100u
+
+* ---------------- clock oscillator (block 1, transistor-level) ----------------
+* exponential converter: pot/VR1/R12 set node E4; Q4 diode-connected, Q3
+* sinks I(R5)*exp(V(ne4)/VT) from the timing node.
+* Measured law (this deck, vr1pos=0.512): f = 1.2*exp(0.5588*(vpot-5)) Hz
+* within ~1.5% over vpot 0..10 (0.072 Hz .. 19.3 Hz, no stall); ramp spans
+* ~13.4 down to ~7.25 V; sample pulse (IC1a) ~1.33 ms. External sync via
+* SYNC IN captures 1:1 for rates up to ~2x the free-run rate.
+Vctl vctl 0 {vpot}
+R9 vctl ne4 100k
+R11 ne4 nw 100k
+Rvr1a nw 0 {1+100k*vr1pos}
+Rvr1b nw rail3 {1+100k*(1-vr1pos)}
+R12 ne4 0 1.5k
+R5 rail1 nm 10meg
+Q4 nm nm ne4 QC945
+Q3 nc3 nm 0 QC945
+R10 ct nc3 1k
+* timing cap hangs from the +14.9V rail; Q3 ramps ct DOWN
+C6 rail1 ct 0.1u
+* threshold divider / sync node S
+R6 rail1 ns 4.7k
+R8 ns 0 4.7k
+* complementary latch
+R7 ns nf 10meg
+Q1 nf nk rail1 QA564
+D1 nf nb DSW
+D2 nb ns DSW
+Q2 nk nb ct QC945
+* SYNC IN (pin 8): unplugged SYNCHRO jack leaves C5's far plate open (1G leak
+* only gives ngspice a DC path). The sync-capture test substitutes this line
+* with a pulse source.
+C5 syncin ns 0.1u
+Rsync syncin 0 1g
+
+* ---------------- sampling pulse (block 2, IC1a comparator) ----------------
+* C7 differentiates ct's rising snap into P (biased at -1.35V); IC1a has no
+* feedback: modeled as a +/-14.4V clamped comparator (+in = P, -in = G1)
+C7 ct np 0.01u
+R13 np 0 100k
+R14 np rail3 1meg
+Bic1a spulse 0 V=14.4*tanh(1e3*V(np))
+* 0/5V logic view of the pulse for measurements (not a circuit node)
+Eclk clkr 0 TABLE {V(spulse)} = (-1 0) (1 5)
+Rclk clkr clk 100
+Cclk clk 0 1n
+
+* ---------------- S&H core (block 4) ----------------
+* input source (tests substitute this line for ramp/sine inputs)
+Vin in 0 DC {vindc}
+R15 in bp 10k
+XIC1B bp bm bout opamp
+R16 bm 0 100k
+R17 bm bout 10k
+* JFET series switch: D3 pulls the gate to spulse (-14.4V -> pinched off)
+* during hold; during sample D3 is reverse biased and R19 holds Vgs ~ 0 (on)
+R19 gate bout 100k
+D3 gate spulse DSW
+J7 bout gate hold J2SK30
+C9 hold 0 0.1u
+* CA3140 input bias current (droop source; direction/sign ASSUMED downward)
+Ibias hold 0 {ibias}
+XIC2 hold out2 out2 opamp
+R25 out2 out 470
+* benign test load (real downstream load is on other boards/panel, unknown)
+Rload out 0 1meg
+
+* ---------------- sync out squarer (block 3, transistor-level) ----------------
+* input = IC1b's buffered S/H input (traced), squared by Q6/Q5 to the jack
+R18 bout nb6 100k
+Q6 nc6 nb6 0 QC945
+R22 rail1 nc6 100k
+Q5 nc5 nc6 0 QC945
+R23 vcc nc5 10k
+R24 nc5 syncout 470
+Rsyncload syncout 0 10k
+
+* ---------------- S/H indicator (block 5) ----------------
+D4 spulse n4 DSW
+R27 n4 nb8 330k
+C8 nb8 0 0.1u
+R21 nb8 0 1meg
+Q8 nc8 nb8 0 QC945
+R20 ind nc8 1k
+DLED vcc ind DLED
+
+.control
+tran 0.5m 5
+wrdata sh_out.txt v(out) v(ct) v(clk) v(hold) v(bout)
+.endc
+
+.end

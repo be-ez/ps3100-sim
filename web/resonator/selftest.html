@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<!-- Offline render self-test: impulse through the wasm resonator with the
+     vactrol bypassed and a fixed Rldr, then peak-pick the response. Compare
+     the logged band centers against analysis/reference.json. Run headless:
+     chrome --headless=new --virtual-time-budget=20000 --enable-logging=stderr \
+       http://localhost:8931/resonator/selftest.html 2>&1 | grep SELFTEST -->
+<meta charset="utf-8">
+<title>resonator selftest</title>
+<script type="module">
+const RLDR = 100000, COLOR = 0, SR = 48000, N = 1 << 17;
+
+const log = (...a) => {
+  console.log("SELFTEST", ...a);
+  document.body.insertAdjacentText("beforeend", "SELFTEST " + a.join(" ") + "\n");
+};
+
+try {
+  log("start");
+  const { FaustMonoDspGenerator } = await import("../lib/faustwasm/index.js");
+  log("imported");
+  const ctx = new OfflineAudioContext(1, N, SR);
+
+  const dspMeta = await (await fetch("./generated/dsp-meta.json")).json();
+  const dspModule = await WebAssembly.compile(
+    await (await fetch("./generated/dsp-module.wasm")).arrayBuffer());
+  const generator = new FaustMonoDspGenerator();
+  const node = await generator.createNode(ctx, "resonator", {
+    module: dspModule, json: JSON.stringify(dspMeta), soundfiles: {},
+  });
+  log("node created");
+
+  node.setParamValue("/resonator/bypass_vactrol", 1);
+  node.setParamValue("/resonator/rldr", RLDR);
+  node.setParamValue("/resonator/color", COLOR);
+  node.setParamValue("/resonator/blend", 1);
+
+  const buf = ctx.createBuffer(1, N, SR);
+  buf.getChannelData(0)[0] = 1;
+  const src = new AudioBufferSourceNode(ctx, { buffer: buf });
+  src.connect(node);
+  node.connect(ctx.destination);
+  src.start();
+
+  const rendered = await ctx.startRendering();
+  const x = rendered.getChannelData(0);
+
+  // Goertzel magnitude on a log grid, then local-maxima peak pick
+  const P = 600, FLO = 20, FHI = 20000;
+  const mags = new Float64Array(P), freqs = new Float64Array(P);
+  for (let i = 0; i < P; i++) {
+    const f = FLO * (FHI / FLO) ** (i / (P - 1));
+    freqs[i] = f;
+    const w = 2 * Math.PI * f / SR, c = 2 * Math.cos(w);
+    let s0 = 0, s1 = 0, s2 = 0;
+    for (let n = 0; n < N; n++) { s0 = x[n] + c * s1 - s2; s2 = s1; s1 = s0; }
+    mags[i] = 20 * Math.log10(Math.sqrt(s1 * s1 + s2 * s2 - c * s1 * s2) + 1e-30);
+  }
+  const peaks = [];
+  for (let i = 2; i < P - 2; i++)
+    if (mags[i] > mags[i-1] && mags[i] >= mags[i+1] && mags[i] > mags[i-2] && mags[i] > mags[i+2])
+      peaks.push({ f0: +freqs[i].toFixed(1), db: +mags[i].toFixed(1) });
+  peaks.sort((a, b) => b.db - a.db);
+  log("rldr", RLDR, "color", COLOR, "peaks", JSON.stringify(peaks.slice(0, 5)));
+  log("rms", Math.sqrt(x.reduce((s, v) => s + v * v, 0) / N).toExponential(2));
+  log("DONE");
+} catch (e) {
+  log("FAIL", e.stack || String(e));
+}
+</script>
