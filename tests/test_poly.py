@@ -185,6 +185,51 @@ def test_octave_row_levels_match_siggen(poly_bin, siggen_bin):
         )
 
 
+@pytest.mark.parametrize(
+    ("wfd", "wfr", "mode"),
+    [(0.0, 14.83, "saw"), (0.0, 10.5, "triangle"), (9.5, 0.4, "pulse")],
+)
+def test_shaper_table_matches_direct_cell(poly_bin, siggen_bin, wfd, wfr, mode):
+    """poly.dsp does not run sigB.cell per sample: row k reads counter bits
+    0..k, so it precomputes the cell at the 2^(k+1) possible ladder levels with
+    compile-time bit patterns (Faust hoists those solves to control rate) and
+    the audio loop selects among them. That is what makes 48 channels fit the
+    browser's render quantum, so the table and its index must stay pinned to
+    siggen's direct per-sample solve - including in the fold/comparator regions
+    where the cell is most sensitive, and for the deepest row (16 levels, where
+    a mis-indexed table is easiest to hide)."""
+    trim = 0.05
+    for oct_ in range(4):
+        lo, hi = keymask([(C, oct_)])
+        xp = (
+            render(
+                poly_bin,
+                f"keys_lo={lo}",
+                f"keys_hi={hi}",
+                "bypass_env=1",
+                "bypass_filter=1",
+                f"wfd={wfd}",
+                f"wfr={wfr}",
+                n=N,
+            )[FS // 2 :]
+            / trim
+        )
+        xs = render(siggen_bin, f"note={C}", f"octave={oct_}", f"wfd={wfd}", f"wfr={wfr}", n=N)[
+            FS // 2 :
+        ]
+        # same level SET (the table's values) ...
+        up, us = np.unique(np.round(xp, 6)), np.unique(np.round(xs, 6))
+        assert len(up) == len(us) and np.allclose(up, us, atol=1e-6), (
+            f"{mode} oct{oct_}: levels {up} vs siggen {us}"
+        )
+        # ... and the same level at the same counter phase (the table's index):
+        # both read the same divider, so the sequences must align sample-wise.
+        assert np.allclose(xp, xs, atol=1e-6), (
+            f"{mode} oct{oct_}: table index diverges from siggen's staircase "
+            f"(max {np.max(np.abs(xp - xs)):.3g})"
+        )
+
+
 # --- 2. phase-locked octaves --------------------------------------------------
 
 

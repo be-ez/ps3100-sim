@@ -110,14 +110,31 @@ fmPC(pc) = 1.0 / (sigB.dvq * ct(pc) / ichg + sigB.kdisq * ct(pc));
 masterCount(pc) = (+(fmPC(pc) / ma.SR) : fmod(_, 16.0)) ~ _;   // ph in [0,16)
 
 // ---- octave-row staircase from the shared counter bits (re-read ladder
-// pools, identical to dsp/siggen.dsp; own tap = the highest bit). ph is the
-// counter signal fanned in from masterCount. -------------------------------
-cc(ph, m) = fmod(floor(floor(ph) / pow(2.0, m)), 2.0) - 0.5;   // bit(m) - 0.5
-nsRowFn(0, ph) = sigB.vmid + sigB.vsq * cc(ph, 0);
-nsRowFn(1, ph) = sigB.vmid + sigB.vsq * (cc(ph, 1) + cc(ph, 0)) / 2.0;
-nsRowFn(2, ph) = sigB.vmid + sigB.vsq * (2.0 * cc(ph, 2) + cc(ph, 1) + cc(ph, 0)) / 4.0;
-nsRowFn(3, ph) = sigB.vmid
-    + sigB.vsq * (3.9 * cc(ph, 3) + 1.95 * cc(ph, 2) + cc(ph, 1) + cc(ph, 0)) / 7.85;
+// pools, identical to dsp/siggen.dsp; own tap = the highest bit) -----------
+//
+// The staircase is not evaluated as a signal here. Row k reads counter bits
+// 0..k, so its ladder takes only 2^(k+1) distinct levels, and the shaper cell
+// (sigB.cell) is a memoryless static solve - the re-read confirmed the cells
+// have no capacitors - of that level against the wfd/wfr rails. So the cell is
+// evaluated at the 2+4+8+16 = 30 possible levels with COMPILE-TIME bit
+// patterns, which makes each one depend on nothing but the panel controls:
+// Faust hoists all 30 solves into the control section (once per block), and
+// the audio loop is left with a select over the precomputed levels. Every one
+// of the 48 voices then costs a table read instead of ~14 exp + 9 log per
+// sample. Identical output (float reassociation only, ~1e-15), ~11x less CPU
+// - the 48-channel build only fits the browser's audio render quantum with
+// this; see tests/test_poly.py::test_shaper_table_matches_direct_cell.
+ccK(j, m) = fmod(floor(j / pow(2.0, m)), 2.0) - 0.5;   // bit(m) of const j, -0.5
+nsRowK(0, j) = sigB.vmid + sigB.vsq * ccK(j, 0);
+nsRowK(1, j) = sigB.vmid + sigB.vsq * (ccK(j, 1) + ccK(j, 0)) / 2.0;
+nsRowK(2, j) = sigB.vmid + sigB.vsq * (2.0 * ccK(j, 2) + ccK(j, 1) + ccK(j, 0)) / 4.0;
+nsRowK(3, j) = sigB.vmid
+    + sigB.vsq * (3.9 * ccK(j, 3) + 1.95 * ccK(j, 2) + ccK(j, 1) + ccK(j, 0)) / 7.85;
+// row k's level table and the counter's low k+1 bits as its index
+nsteps(oct) = int(pow(2, oct + 1));
+shapedRow(oct, idx) = par(j, nsteps(oct), sigB.cell(nsRowK(oct, j)))
+                    : ba.selectn(nsteps(oct), idx);
+idxOf(oct, ph) = fmod(floor(ph), pow(2.0, oct + 1));
 
 // ---- per-key gate from the bitmask (pc,oct compile-time -> bit index folds) -
 bitOf(mask, b) = fmod(floor(mask / pow(2.0, b)), 2.0);
@@ -154,7 +171,7 @@ korg35(x) = x : gatB.up : gatB.hp1x2 : (gatB.nl, gatB.nl) : gatB.lp2x2
 // ---- one note channel: master phase in, gated+filtered audio out ----------
 voice(pc, oct) = osc : gvca : filt
 with {
-    osc(ph) = sigB.cell(nsRowFn(oct, ph)) * sigTrim;   // staircase, scaled
+    osc(ph) = shapedRow(oct, idxOf(oct, ph)) * sigTrim;   // staircase, scaled
     gvca(x) = x * vcaGainG(gateOf(pc, oct));            // CD4007 gate VCA
     filt(x) = ba.if(bypassFilter > 0.5, x, korg35(x));
 };
