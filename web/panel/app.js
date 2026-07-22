@@ -214,7 +214,9 @@ const state = {
   gegDelay: 0, gegAttack: 0.1, gegRelease: 0.35, multiple: false,
   peak1: 0.5, peak2: 0.5, peak3: 0.5, blend: 0.7, cv2: 1, ensOn: true,
   mg1Rate: 0.5, vp1: 0.85, mg1Dest: "off",
-  mg2Rate: 0.5, mg2Depth: 0.85, mg2Dest: "sweep",   // depth/VP knobs are bipolar: 0.5 = null
+  // every patch destination starts OFF: the panel powers up unmodulated, so a
+  // plain note is a plain note until something is patched onto a bus
+  mg2Rate: 0.5, mg2Depth: 0.85, mg2Dest: "off",   // depth/VP knobs are bipolar: 0.5 = null
   shClock: 0.5, vp2: 0.85, shDest: "off",
 };
 
