@@ -4,9 +4,9 @@
       "id": "panel",
       "board": "ALL",
       "title": "Full Panel",
-      "dsp": "(instrument_poly + MG1/MG2/S&H/VP wasm, JS patch field)",
+      "dsp": "(instrument_poly + MG1/MG2/S&H/VP wasm, traced panel layout)",
       "dspName": "panel",
-      "blurb": "Every modeled board on one panel \u2014 modulation sources patch onto the buses through the real Voltage Processors"
+      "blurb": "The real front panel, control for control, in the traced geometry \u2014 every knob, selector, slide switch, bus tap and patch jack the instrument carries, colour-coded by which board actually backs it"
     },
     {
       "id": "poly",

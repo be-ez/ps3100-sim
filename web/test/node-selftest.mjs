@@ -372,5 +372,51 @@ function goertzelDb(x, f) {
     `chord ${rms.toExponential(1)}, idle ${rmsI.toExponential(1)}`);
 }
 
+// ---- full panel: every address it drives must exist in the built wasm ----
+// setParamValue silently ignores unknown paths, so a typo leaves the control
+// looking alive while doing nothing. This pins panel/params.js to the builds.
+{
+  const { PARAM, MOD_PARAM } = await import(join(webDir, "panel/params.js"));
+  const addrsOf = async (boardId) => {
+    const meta = JSON.parse(
+      await readFile(join(webDir, boardId, "generated/dsp-meta.json"), "utf8"));
+    const out = [];
+    (function walk(items) {
+      for (const it of items) {
+        if (it.items) walk(it.items);
+        else if (it.address) out.push(it.address);
+      }
+    })(meta.ui);
+    return new Set(out);
+  };
+
+  const polyAddrs = await addrsOf("poly");
+  const missing = Object.entries(PARAM).filter(([, a]) => !polyAddrs.has(a));
+  check("panel instrument_poly addresses resolve", missing.length === 0,
+    missing.length ? missing.map(([k, a]) => `${k} -> ${a}`).join(", ")
+      : `${Object.keys(PARAM).length} addresses`);
+
+  const MOD_DIR = { mg1: "mg1noise", modvca: "modvca", sh: "sh", vp: "vp" };
+  for (const [board, addrs] of Object.entries(MOD_PARAM)) {
+    const have = await addrsOf(MOD_DIR[board]);
+    const bad = addrs.filter((a) => !have.has(a));
+    check(`panel ${board} addresses resolve`, bad.length === 0,
+      bad.length ? bad.join(", ") : `${addrs.length} addresses`);
+  }
+
+  // the keybed must be able to reach every one of the 48 hardwired channels
+  const { CONTROLS } = await import(join(webDir, "panel/layout.js"));
+  const KEY_LO = 41, KEY_HI = 88;
+  const reached = new Set();
+  for (let m = KEY_LO; m <= KEY_HI; m++) {
+    reached.add(((m - KEY_LO) % 12) * 4 + (3 - Math.floor((m - KEY_LO) / 12)));
+  }
+  check("panel keybed reaches all 48 poly channels", reached.size === 48,
+    `${reached.size}/48 channels, ${KEY_HI - KEY_LO + 1} keys`);
+  check("panel layout has no duplicate control ids",
+    new Set(CONTROLS.map((c) => c.id)).size === CONTROLS.length,
+    `${CONTROLS.length} controls`);
+}
+
 console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");
 process.exit(failures ? 1 : 0);

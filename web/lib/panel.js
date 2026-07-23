@@ -47,6 +47,77 @@ export function makeRocker(el, initial, onChange) {
   return { get: () => on, set: (v) => { on = v; render(); } };
 }
 
+// Detented rotary switch (WAVE FORM, MG1 waveform, KBD TRIGGER SELECT).
+// n positions over the same 270-degree sweep a real panel switch travels;
+// drag snaps to the nearest detent, arrows step one position.
+export function makeSelector(el, count, initial, onChange) {
+  let idx = initial;
+  const span = count > 1 ? 270 / (count - 1) : 0;
+
+  const render = () => {
+    el.style.setProperty("--angle", `${-135 + idx * span}deg`);
+    el.setAttribute("aria-valuenow", String(idx));
+    el.dataset.pos = String(idx);
+  };
+  const set = (i) => {
+    const next = Math.max(0, Math.min(count - 1, Math.round(i)));
+    if (next === idx) return;
+    idx = next;
+    render();
+    onChange(idx);
+  };
+
+  let dragging = false, lastY = 0, acc = 0;
+  el.addEventListener("pointerdown", (e) => {
+    dragging = true; lastY = e.clientY; acc = idx;
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    acc += (lastY - e.clientY) / 28;         // ~28 px of travel per detent
+    acc = Math.max(0, Math.min(count - 1, acc));
+    lastY = e.clientY;
+    set(acc);
+  });
+  el.addEventListener("pointerup", () => { dragging = false; });
+  el.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    set(idx - Math.sign(e.deltaY));
+  }, { passive: false });
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowUp" || e.key === "ArrowRight") { e.preventDefault(); set(idx + 1); }
+    if (e.key === "ArrowDown" || e.key === "ArrowLeft") { e.preventDefault(); set(idx - 1); }
+  });
+
+  render();
+  return { get: () => idx, set: (i) => { idx = -1; set(i); } };
+}
+
+// Vertical slide switch, 2 or 3 position (RELEASE / KBD HOLD / SYNCHRO /
+// ENSEMBLE / AUTO). Click cycles; arrows step.
+export function makeSlideSwitch(el, count, initial, onChange) {
+  let idx = initial;
+  const render = () => {
+    el.dataset.pos = String(idx);
+    el.style.setProperty("--pos", String(idx));
+    el.setAttribute("aria-valuenow", String(idx));
+  };
+  const set = (i) => {
+    const next = Math.max(0, Math.min(count - 1, i));
+    if (next === idx) return;
+    idx = next;
+    render();
+    onChange(idx);
+  };
+  el.addEventListener("click", () => set((idx + 1) % count));
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowUp") { e.preventDefault(); set(idx + 1); }
+    if (e.key === "ArrowDown") { e.preventDefault(); set(idx - 1); }
+  });
+  render();
+  return { get: () => idx, set: (i) => { idx = -1; set(i); } };
+}
+
 // radio-style chip group; chips are buttons with data-value
 export function makeChipGroup(container, onChange) {
   const chips = [...container.querySelectorAll(".chip")];

@@ -1,0 +1,364 @@
+/* PS-3100 full panel: absolute-positioned silkscreen field.
+   Coordinates come from panel/layout.js in "panel units" (a 1465 x 462
+   field traced from the front-panel photo); this sheet only scales that
+   field to the viewport and draws the hardware. Palette + knob/keybed
+   primitives are inherited from lib/panel.css. */
+
+.panel-frame {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel-lo) 100%);
+  border: 1px solid #000;
+  border-radius: 4px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .05) inset;
+}
+
+.pan {
+  position: absolute;
+  top: 0; left: 0;
+  width: 1465px;
+  height: 462px;
+  transform-origin: 0 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* every positioned child is centred on its layout coordinate */
+.pan > * { position: absolute; }
+
+/* ---------- silkscreen ---------- */
+
+.sec {
+  border-left: 1px solid var(--hairline);
+  pointer-events: none;
+}
+.sec:last-of-type { border-right: 0; }
+.sec[data-first="1"] { border-left: 0; }
+
+.sec-inset {
+  border: 1px solid var(--hairline);
+  border-left: 0;
+  border-bottom: 0;
+}
+
+.sec-title,
+.ctl-label,
+.jack-label,
+.jack-range,
+.pbox span,
+.legend-note {
+  color: var(--legend);
+  letter-spacing: .16em;
+  white-space: pre;
+  text-align: center;
+  line-height: 1.35;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.sec-title { font-size: 6.2px; letter-spacing: .22em; }
+.ctl-label { font-size: 5px; color: var(--legend); }
+.jack-label { font-size: 4.4px; }
+.jack-range { font-size: 3.6px; color: var(--legend-dim); letter-spacing: .06em; }
+
+.ctl-label[data-side="left"],
+.jack-label[data-side="right"] { text-align: center; }
+
+/* flow lines + the two long modulation buses */
+.flow-line {
+  background: rgba(216, 211, 198, .72);
+  pointer-events: none;
+}
+.flow-bus { background: rgba(216, 211, 198, .9); height: 2px; }
+
+.fbox, .pbox {
+  border: 1px solid rgba(216, 211, 198, .7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.fbox span, .pbox span {
+  font-size: 3.8px;
+  letter-spacing: .06em;
+  transform: none;
+}
+
+/* the VCA gain-block triangles drawn on the flow line */
+.ftri {
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ftri::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(216, 211, 198, .7);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  background: transparent;
+}
+.ftri span {
+  font-size: 3.8px;
+  letter-spacing: .06em;
+  color: var(--legend);
+  transform: translateX(-15%);
+}
+
+/* ---------- knobs ---------- */
+
+.pk {
+  --kd: 44px;
+  --angle: 0deg;
+  width: var(--kd);
+  height: var(--kd);
+  margin-left: calc(var(--kd) / -2);
+  margin-top: calc(var(--kd) / -2);
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #3a3b3f 0%, #232427 42%, #121214 100%);
+  box-shadow:
+    0 0 0 1px #000,
+    0 3px 6px rgba(0, 0, 0, .55),
+    0 1px 0 rgba(255, 255, 255, .08) inset;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.pk::before {                       /* skirt tick ring */
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from -135deg,
+    var(--legend-dim) 0deg 1.2deg, transparent 1.2deg 27deg);
+  -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%, #000 74%, transparent 75%);
+  mask: radial-gradient(circle, transparent 62%, #000 63%, #000 74%, transparent 75%);
+  opacity: .75;
+  pointer-events: none;
+}
+
+.pk::after {                        /* pointer line */
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 8%;
+  width: 2.5px;
+  height: 42%;
+  margin-left: -1.25px;
+  border-radius: 2px;
+  background: var(--legend);
+  transform-origin: 50% calc(100% + 8%);
+  transform: rotate(var(--angle));
+}
+
+.pk-trim { --kd: 24px; }
+.pk-trim::after { width: 2px; height: 46%; }
+
+.pk:focus-visible, .psel:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+
+/* numeric skirt legends, placed by JS around the 270-degree sweep */
+.pk-scale {
+  pointer-events: none;
+  font-size: 3.5px;
+  color: var(--legend-dim);
+  letter-spacing: 0;
+  transform: translate(-50%, -50%);
+}
+
+/* ---------- rotary selectors ---------- */
+
+/* selectors carry both .pk and .psel; only the detent ring differs */
+.psel { cursor: pointer; }
+.psel::before { background: none; }
+
+.psel-pos {
+  pointer-events: none;
+  font-size: 3.9px;
+  color: var(--legend);
+  letter-spacing: .04em;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+.psel-pos[data-on="1"] { color: var(--amber); }
+
+/* ---------- slide switches + orange bus taps ---------- */
+
+.pslide {
+  --pos: 0;
+  width: 9px;
+  height: 22px;
+  margin-left: -4.5px;
+  margin-top: -11px;
+  border: 1px solid #000;
+  border-radius: 2px;
+  background: #0d0d0f;
+  cursor: pointer;
+  padding: 1px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.pslide-cap {
+  height: 40%;
+  border-radius: 1px;
+  background: linear-gradient(180deg, #efece2, #b9b5a8);
+  transition: transform .08s ease;
+  transform: translateY(calc(var(--pos) * -115%));
+}
+.pslide[data-count="3"] .pslide-cap { height: 30%; }
+.pslide[data-count="3"] .pslide-cap { transform: translateY(calc(var(--pos) * -108%)); }
+.pslide:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.ptap {
+  --pos: 0;
+  width: 11px;
+  height: 26px;
+  margin-left: -5.5px;
+  margin-top: -13px;
+  border: 1px solid #000;
+  border-radius: 2px;
+  background: #120d07;
+  cursor: pointer;
+  padding: 1.5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.ptap-cap {
+  height: 45%;
+  border-radius: 1px;
+  background: linear-gradient(180deg, #f0a02a, #b96c12);
+  transform: translateY(calc(var(--pos) * -110%));
+  transition: transform .08s ease;
+}
+.ptap:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+/* ---------- lamps, power ---------- */
+
+.plamp {
+  --d: 11px;
+  width: var(--d);
+  height: var(--d);
+  margin-left: calc(var(--d) / -2);
+  margin-top: calc(var(--d) / -2);
+  border-radius: 50%;
+  background: #3a1510;
+  box-shadow: 0 0 0 1px #000;
+  pointer-events: none;
+}
+.plamp.on {
+  background: var(--power-red);
+  box-shadow: 0 0 0 1px #000, 0 0 9px 2px rgba(224, 76, 58, .8);
+}
+
+.ppower {
+  width: 30px; height: 30px;
+  margin-left: -15px;
+  margin-top: -15px;
+  border-radius: 50%;
+  border: 1px solid #000;
+  background: radial-gradient(circle at 35% 30%, #4a4b50, #1a1b1d 70%);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, .6), 0 0 0 3px #2a2b2e;
+  cursor: pointer;
+}
+.ppower[aria-pressed="true"] {
+  background: radial-gradient(circle at 35% 30%, #2a2b2e, #101012 70%);
+}
+.ppower:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+
+/* ---------- patch jacks ---------- */
+
+.pjack {
+  width: 26px; height: 26px;
+  margin-left: -13px;
+  margin-top: -13px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #c8c6bd 0%, #86847c 45%, #4a4944 70%, #17171a 72%);
+  box-shadow: 0 0 0 1px #000, 0 2px 4px rgba(0, 0, 0, .5);
+  cursor: crosshair;
+}
+.pjack::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: #08080a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .9) inset;
+}
+.pjack:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.pdin {
+  width: 24px; height: 24px;
+  margin-left: -12px;
+  margin-top: -12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #4a4944 0%, #232326 60%, #0d0d0f 100%);
+  box-shadow: 0 0 0 1px #000;
+  pointer-events: none;
+}
+
+/* ---------- modelled / not-modelled treatment ---------- */
+
+.pan[data-xray="1"] [data-status="live"] { box-shadow: 0 0 0 1.5px rgba(90, 190, 120, .85); }
+.pan[data-xray="1"] [data-status="soon"] { box-shadow: 0 0 0 1.5px rgba(255, 182, 72, .8); }
+.pan[data-xray="1"] [data-status="panel"] { box-shadow: 0 0 0 1.5px rgba(90, 140, 200, .8); }
+.pan[data-xray="1"] [data-status="inert"] { box-shadow: 0 0 0 1.5px rgba(150, 150, 150, .35); }
+
+[data-status="soon"].pk, [data-status="soon"].psel,
+[data-status="inert"].pk, [data-status="inert"].psel {
+  filter: saturate(.5) brightness(.78);
+}
+[data-status="inert"].pslide, [data-status="soon"].pslide,
+[data-status="inert"].ptap, [data-status="soon"].ptap { filter: brightness(.72); }
+[data-status="inert"].pjack, [data-status="soon"].pjack { filter: brightness(.8); }
+
+/* ---------- legend + readout under the panel ---------- */
+
+.panel-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  color: var(--legend-dim);
+}
+.panel-legend b { font-weight: 400; color: var(--legend); }
+.legend-key {
+  display: inline-block;
+  width: 9px; height: 9px;
+  border-radius: 2px;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+.legend-key[data-k="live"] { background: rgba(90, 190, 120, .85); }
+.legend-key[data-k="soon"] { background: rgba(255, 182, 72, .8); }
+.legend-key[data-k="panel"] { background: rgba(90, 140, 200, .8); }
+.legend-key[data-k="inert"] { background: rgba(150, 150, 150, .4); }
+
+.xray-toggle {
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  color: var(--legend-dim);
+  font: inherit;
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+.xray-toggle[aria-pressed="true"] { color: var(--amber); border-color: var(--amber); }
+
+/* hover readout: which board a control belongs to */
+.pan-readout {
+  min-height: 15px;
+  margin-top: 8px;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: .1em;
+  color: var(--legend-dim);
+}
+.pan-readout b { font-weight: 400; color: var(--legend); }

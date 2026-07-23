@@ -5,12 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PS-3100 - full panel in the browser</title>
 <link rel="stylesheet" href="../lib/panel.css">
+<link rel="stylesheet" href="panel.css">
 <style>
-  .section-slim { flex: 1 1 auto; }
-  .panel-controls + .panel-controls { margin-top: 14px; }
-  .dest-chips { display: flex; gap: 5px; margin-top: 8px; justify-content: center; }
-  .dest-chips .chip { padding: 2px 6px 2px 4px; font-size: 8px; }
-  .dest-chips .chip i { width: 10px; height: 6px; }
+  .room { max-width: 1500px; }
 </style>
 </head>
 <body>
@@ -19,224 +16,41 @@
 
   <section class="unit" aria-label="PS-3100 full panel">
 
-    <div class="panel">
+    <div class="panel" style="padding:12px">
 
-      <header class="panel-head">
+      <header class="panel-head" style="margin-bottom:12px">
         <div class="badge">
           <span class="badge-model">PS&#8209;3100</span>
         </div>
         <div class="badge-sub">POLYPHONIC SYNTHESIZER &middot; FULL&nbsp;PANEL &middot; ALL&nbsp;BOARDS</div>
-        <div class="power-block">
-          <span class="lamp power-lamp" id="power-lamp" aria-hidden="true"></span>
-          <button class="rocker" id="power" aria-pressed="false">
-            <span class="rocker-cap"></span>
-          </button>
-          <span class="legend-sm">POWER</span>
-        </div>
+        <div class="power-block" id="power-block"></div>
       </header>
 
-      <!-- row 1: the composed instrument (voice + shared chain) -->
-      <div class="panel-controls">
-
-        <fieldset class="section section-slim">
-          <legend>SIGNAL&nbsp;&middot;&nbsp;WAVEFORM</legend>
-          <div class="knob-row">
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-wfd" tabindex="0" role="slider"
-                   aria-label="Waveform" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">WAVE&nbsp;FORM</span>
-            </div>
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-tune" tabindex="0" role="slider"
-                   aria-label="Tune" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">TUNE</span>
-            </div>
-          </div>
-        </fieldset>
-
-        <fieldset class="section section-slim">
-          <legend>FILTER&nbsp;&middot;&nbsp;PER-KEY&nbsp;ENV</legend>
-          <div class="knob-row">
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-vfc" tabindex="0" role="slider"
-                   aria-label="Cutoff" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">CUTOFF</span>
-            </div>
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-attack" tabindex="0" role="slider"
-                   aria-label="Attack" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">ATTACK</span>
-            </div>
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-release" tabindex="0" role="slider"
-                   aria-label="Release" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">RELEASE</span>
-            </div>
-          </div>
-        </fieldset>
-
-        <fieldset class="section section-slim">
-          <legend>GEG&nbsp;&middot;&nbsp;TRIGGER</legend>
-          <div class="knob-row">
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-gdel" tabindex="0" role="slider"
-                   aria-label="GEG delay" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">DELAY</span>
-            </div>
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-gatt" tabindex="0" role="slider"
-                   aria-label="GEG attack" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">ATTACK</span>
-            </div>
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-grel" tabindex="0" role="slider"
-                   aria-label="GEG release" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">RELEASE</span>
-            </div>
-          </div>
-          <div class="mg-switch">
-            <button class="rocker rocker-sm" id="trig-mode" aria-pressed="false"><span class="rocker-cap"></span></button>
-            <span class="legend-sm">MULTIPLE</span>
-          </div>
-        </fieldset>
-
-        <fieldset class="section section-slim">
-          <legend>RESONATORS</legend>
-          <div class="knob-row">
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-peak1" tabindex="0" role="slider"
-                   aria-label="Peak 1" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">PK&nbsp;1</span>
-            </div>
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-peak2" tabindex="0" role="slider"
-                   aria-label="Peak 2" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">PK&nbsp;2</span>
-            </div>
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-peak3" tabindex="0" role="slider"
-                   aria-label="Peak 3" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">PK&nbsp;3</span>
-            </div>
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-blend" tabindex="0" role="slider"
-                   aria-label="Intensity" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">INTENS</span>
-            </div>
-          </div>
-        </fieldset>
-
-        <fieldset class="section section-slim">
-          <legend>AMP&nbsp;&middot;&nbsp;ENSEMBLE</legend>
-          <div class="knob-row">
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-cv2" tabindex="0" role="slider"
-                   aria-label="VCA 2" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">VCA&nbsp;2</span>
-            </div>
-          </div>
-          <div class="mg-switch">
-            <button class="rocker rocker-sm" id="ens-on" aria-pressed="true"><span class="rocker-cap"></span></button>
-            <span class="legend-sm">ENSEMBLE</span>
-          </div>
-        </fieldset>
-
+      <!-- the whole silkscreen field is generated from layout.js -->
+      <div class="panel-frame" id="panel-frame">
+        <div class="pan" id="pan"></div>
       </div>
 
-      <!-- row 2: modulation boards, patched to the instrument buses -->
-      <div class="panel-controls">
+      <div class="pan-readout" id="readout"></div>
 
-        <fieldset class="section section-slim">
-          <legend>MG&nbsp;1&nbsp;&rarr;&nbsp;VP&nbsp;1</legend>
-          <div class="knob-row">
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-mg1rate" tabindex="0" role="slider"
-                   aria-label="MG1 rate" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">FREQ</span>
-            </div>
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-vp1" tabindex="0" role="slider"
-                   aria-label="VP1 amount" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">VP&nbsp;1&nbsp;AMT</span>
-            </div>
-          </div>
-          <div class="dest-chips" role="radiogroup" aria-label="MG1 destination" id="mg1-dest">
-            <button class="chip selected" data-value="off" role="radio" aria-checked="true"><i></i>OFF</button>
-            <button class="chip chip-yellow" data-value="sweep" role="radio" aria-checked="false"><i></i>RES</button>
-            <button class="chip chip-blue" data-value="pitch" role="radio" aria-checked="false"><i></i>PITCH</button>
-            <button class="chip chip-green" data-value="cutoff" role="radio" aria-checked="false"><i></i>FILT</button>
-          </div>
-        </fieldset>
-
-        <fieldset class="section section-slim">
-          <legend>MG&nbsp;2&nbsp;(KLM-63)</legend>
-          <div class="knob-row">
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-mg2rate" tabindex="0" role="slider"
-                   aria-label="MG2 rate" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">FREQ</span>
-            </div>
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-mg2depth" tabindex="0" role="slider"
-                   aria-label="MG2 depth" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">DEPTH</span>
-            </div>
-          </div>
-          <div class="dest-chips" role="radiogroup" aria-label="MG2 destination" id="mg2-dest">
-            <button class="chip selected" data-value="off" role="radio" aria-checked="true"><i></i>OFF</button>
-            <button class="chip chip-yellow" data-value="sweep" role="radio" aria-checked="false"><i></i>RES</button>
-            <button class="chip chip-blue" data-value="pitch" role="radio" aria-checked="false"><i></i>PITCH</button>
-            <button class="chip chip-green" data-value="cutoff" role="radio" aria-checked="false"><i></i>FILT</button>
-          </div>
-        </fieldset>
-
-        <fieldset class="section section-slim">
-          <legend>S&nbsp;/&nbsp;H&nbsp;&rarr;&nbsp;VP&nbsp;2</legend>
-          <div class="knob-row">
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-shclock" tabindex="0" role="slider"
-                   aria-label="S/H clock" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">CLOCK</span>
-            </div>
-            <div class="knob-unit">
-              <div class="knob knob-small" id="knob-vp2" tabindex="0" role="slider"
-                   aria-label="VP2 amount" aria-valuemin="0" aria-valuemax="1"></div>
-              <span class="legend-sm">VP&nbsp;2&nbsp;AMT</span>
-            </div>
-          </div>
-          <div class="dest-chips" role="radiogroup" aria-label="S/H destination" id="sh-dest">
-            <button class="chip selected" data-value="off" role="radio" aria-checked="true"><i></i>OFF</button>
-            <button class="chip chip-yellow" data-value="sweep" role="radio" aria-checked="false"><i></i>RES</button>
-            <button class="chip chip-blue" data-value="pitch" role="radio" aria-checked="false"><i></i>PITCH</button>
-            <button class="chip chip-green" data-value="cutoff" role="radio" aria-checked="false"><i></i>FILT</button>
-          </div>
-        </fieldset>
-
-      </div>
-
-      <div class="scope-wrap" style="margin-top:14px">
-        <canvas id="scope" class="scope" width="640" height="110" aria-label="output spectrum"></canvas>
-        <div class="lamps" aria-hidden="true">
-          <span class="glow-lamp" id="mg1-lamp"></span>
-          <span class="glow-lamp" id="mg2-lamp"></span>
-          <span class="glow-lamp" id="sh-lamp"></span>
-        </div>
+      <div class="scope-wrap" style="margin-top:10px">
+        <canvas id="scope" class="scope" width="640" height="96" aria-label="output spectrum"></canvas>
       </div>
     </div>
 
     <div class="keybed" id="keybed" aria-label="keyboard"></div>
   </section>
 
+  <div class="panel-legend" id="legend"></div>
+
   <footer class="caption">
     <p>
-      The whole modeled instrument on one panel. The voice path is the composed 48-channel
-      wasm (signal generators &rarr; per-key gate/KORG35 &rarr; GEG-gated VCA &rarr;
-      resonators &rarr; ensemble); the panel's waveform/tune/filter/release sections are
-      the KLM&#8209;63/62D utility boards' real laws. Below, the modulation boards run live:
-      MG&nbsp;1's triangle and the S&amp;H's stepped voltage pass through the two
-      KLM&#8209;76 Voltage Processors (bipolar: center&nbsp;off, CW&nbsp;+, CCW&nbsp;inverted)
-      and MG&nbsp;2 patches directly - each onto the resonator sweep bus, the
-      temperament (pitch) bus, or the filter bus, like pin-jacks on the real patch field.
+      Every control the real panel carries, in the real geometry. The voice path is the
+      composed 48&#8209;channel wasm (signal generators &rarr; per-key gate/KORG35 &rarr;
+      GEG&#8209;gated VCA &rarr; resonators &rarr; ensemble) - 12 pitch classes &times; 4
+      octave rows, one hardwired channel per key, no voice allocation, exactly as the
+      instrument is built. Colour-code each control by how it is backed with
+      <b class="cap">SHOW WHAT'S MODELED</b>; nothing dimmed is faked.
     </p>
     <p><a class="hub-link" href="../">&larr; All boards</a></p>
   </footer>
