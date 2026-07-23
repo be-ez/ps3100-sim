@@ -689,6 +689,21 @@ window.__cvDebug = () => {
   };
 };
 
+// Dominant-frequency probe: parabolic interpolation of the FFT peak, so a
+// few cents of wobble is resolvable well below the 11.7 Hz bin width. Used to
+// tell real modulation (ensemble, MG) apart from any jitter the control-rate
+// readback might introduce.
+window.__pitchHz = () => {
+  if (!analyser) return null;
+  const n = analyser.frequencyBinCount;
+  const db = new Float32Array(n);
+  analyser.getFloatFrequencyData(db);
+  let k = 1;
+  for (let i = 2; i < n - 1; i++) if (db[i] > db[k]) k = i;
+  const d = 0.5 * (db[k - 1] - db[k + 1]) / (db[k - 1] - 2 * db[k] + db[k + 1] || 1);
+  return (k + (Number.isFinite(d) ? d : 0)) * audioContext.sampleRate / analyser.fftSize;
+};
+
 spectrumScope($("scope"), () => analyser, () => audioContext.sampleRate, {
   onFrame() {
     if (!mods || !audioContext || audioContext.state !== "running") return;
