@@ -1,5 +1,9 @@
 # ps3100-sim
 
+[![The full PS-3100 panel, all boards](docs/panel.png)](https://blog.ᗲ.com/ps3100-sim/panel/)
+
+**[Play the full panel in your browser](https://blog.ᗲ.com/ps3100-sim/panel/)**
+
 An open simulation of the PS-3100 polyphonic synthesizer: each board captured as
 a SPICE netlist, turned into a real-time [Faust](https://faust.grame.fr) DSP
 model, and checked against the netlist so the fast model can't drift from the
