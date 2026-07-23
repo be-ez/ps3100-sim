@@ -72,13 +72,11 @@ export const CONTROLS = [
   // ---- SIGNAL GENERATORS (KLM-64E siggen + KLM-63 wavectl + KLM-62D freqctl)
   SEL("waveform", 158, 80, 54, "WAVE FORM",
     ["TRI", "SAW", "RECT", "┐─REC", "┐─PUL", "PWM"],
-    { status: "soon", bind: "waveform", note: "wavectl.dsp wave 0-5; needs wasm (phase 2)" }),
+    { status: "live", bind: "waveform" }),
   K("pwm-int", 165, 160, 44, "PULSE WIDTH\nMODULATION INTENSITY",
-    { status: "soon", bind: "pwmInt", note: "wavectl.dsp pwm_dc/pwm_on (phase 2)" }),
-  K("fine", 128, 224, 36, "FINE", { scale: "bipolar", status: "soon", bind: "fine",
-    note: "freqctl.dsp vfine (phase 2)" }),
-  K("coarse", 198, 224, 36, "COARSE", { scale: "bipolar", status: "soon", bind: "coarse",
-    note: "freqctl.dsp vcoarse (phase 2)" }),
+    { status: "live", bind: "pwmInt" }),
+  K("fine", 128, 224, 36, "FINE", { scale: "bipolar", status: "live", bind: "fine" }),
+  K("coarse", 198, 224, 36, "COARSE", { scale: "bipolar", status: "live", bind: "coarse" }),
   K("scale", 160, 287, 54, "SCALE", { status: "panel", bind: "scale",
     note: "octave/footage select - keyboard wiring, no board model" }),
   TAP("fm-tap", 112, 326, "", { status: "panel", bind: "fmTap" }),
@@ -93,8 +91,12 @@ export const CONTROLS = [
   K("cutoff", 285, 80, 54, "CUTOFF FREQUENCY", { status: "live", bind: "cutoff" }),
   K("peak", 280, 160, 44, "PEAK", { status: "inert",
     note: "KORG35 Q is a fitted function of cutoff only; no resonance control modeled" }),
+  // filterctl's vbal is reachable, but poly.dsp sums all 48 channels onto one
+  // shared FC bus, so moving BAL would shift every note's cutoff instead of
+  // balancing the halves. Left unwired until the voice split (phase 4).
   K("kbd-filter-bal", 282, 224, 36, "KBD FILTER BALANCE", { scale: "bipolar", status: "soon",
-    bind: "kbdFilterBal", note: "filterctl.dsp vbal; poly.dsp shares one FC bus (phase 4)" }),
+    bind: "kbdFilterBal",
+    note: "filterctl vbal is live, but needs poly.dsp's upper/lower voice split to mean anything" }),
   K("expand", 283, 290, 44, "EXPAND", { status: "soon", bind: "expand",
     note: "gate.dsp expand is fitted; poly.dsp does not expose it (phase 4)" }),
   TAP("cutoff-mod-tap", 228, 326, "", { status: "panel", bind: "cutoffModTap" }),
@@ -109,7 +111,7 @@ export const CONTROLS = [
   K("sustain", 373, 224, 44, "SUSTAIN LEVEL", { status: "inert",
     note: "gate.dsp: panel ADSR conditioning block is not transcribed" }),
   SW("release-mode", 355, 294, "RELEASE", ["RELEASE", "HALF D", "DAMPED"],
-    { status: "soon", bind: "releaseMode", note: "relctl.dsp release/hd switches (phase 2)" }),
+    { status: "live", bind: "releaseMode" }),
   SW("kbd-hold", 402, 294, "KBD HOLD", ["", "ON"], { status: "inert",
     note: "no board model" }),
 

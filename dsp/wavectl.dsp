@@ -79,7 +79,14 @@ asym(tr, x) = loop ~ _ with {
     loop(yp) = yp + (x - yp) * ba.if(x > yp, coef(tr), coef(tauFall));
 };
 
-process(p) = wfrOut * (1.0 - probe) + wfdOut * probe with {
+// Both rails at once, volts at the pins: (WFR pin 12, WFD pin 13). The panel
+// consumer (dsp/panelctl.dsp) drives a signal generator from both rails
+// simultaneously, which the probe-selected `process` below cannot express -
+// `probe` is a single control, so referencing `process` twice would select
+// the same rail twice. `process` is unchanged and stays what the offline
+// harness and the SPICE referee drive.
+rails(p) = wfrOut, wfdOut
+with {
     pv = pwm_dc + p;
     wfdPwm = ba.if(pwm_on > 0.5, pwmWfd(pv), wfdFloat);
     wfrT = (wfrTri, wfrSaw, wfrLeakW, wfrLeakM, wfrLeakN, wfrLeakX)
@@ -89,3 +96,6 @@ process(p) = wfrOut * (1.0 - probe) + wfdOut * probe with {
     wfrOut = asym(tauRise(rsrcWfr), wfrT);
     wfdOut = asym(tauRise(rsrcWfd), wfdT);
 };
+
+process(p) = rails(p) : mix
+with { mix(r, d) = r * (1.0 - probe) + d * probe; };

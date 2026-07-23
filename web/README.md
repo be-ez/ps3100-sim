@@ -9,6 +9,8 @@ lib/        shared panel hardware: panel.css, panel.js (knobs/rockers/chips/
 panel/      the whole front panel: layout.js holds every control's traced
             geometry + how it is backed (live / soon / panel / inert),
             params.js the wasm addresses it drives, app.js renders and binds
+panelctl/   generated-only (no bench page): dsp/panelctl.dsp, the four CV
+            utility boards the panel's conditioning controls actually drive
 resonator/  KLM-62 bench: saw keybed -> triple vactrol bandpass, spectrum scope
 sh/         KLM-76 bench: noise/sine/ramp -> S&H -> patched VCO, strip-chart
 test/       node-selftest.mjs - offline golden checks vs the SPICE references
@@ -19,6 +21,10 @@ boards.json manifest driving the hub and the tests
 # regenerate a board's wasm after editing its dsp (keep only meta + wasm)
 npx --yes -p @grame/faustwasm faust2wasm-ts dsp/<board>.dsp web/<board>/generated -double
 rm -rf web/<board>/generated/{faustwasm,create-node.js,index.html,index.js}
+
+# panelctl is a generated-only build (no bench page, so it is not in
+# boards.json); same recipe, its six outputs are board pin voltages
+npx --yes -p @grame/faustwasm faust2wasm-ts dsp/panelctl.dsp web/panelctl/generated -double
 
 # gate.dsp / instrument.dsp: faustwasm's libfaust 2.86.2 hits a wasm-codegen
 # bug (SigBitCast badnode) on the gate's halfband FIR; use the local CLI:
@@ -45,6 +51,17 @@ page's SHOW WHAT'S MODELED toggle colour-codes the field by that status, so
 nothing on it can quietly pretend to be circuit-accurate. `node-selftest.mjs`
 checks every address in `panel/params.js` against the built `dsp-meta.json`,
 because `setParamValue` ignores unknown paths silently.
+
+The conditioning controls - WAVE FORM, PULSE WIDTH MODULATION INTENSITY,
+FINE/COARSE, CUTOFF FREQUENCY and the RELEASE switch - do not compute a panel
+curve in JS. They set pin voltages on `dsp/panelctl.dsp`, which composes the
+four SPICE-refereed CV utility boards (KLM-63 wavectl + filterctl, KLM-62D
+freqctl + relctl) into one control-rate wasm; the panel reads its six output
+pins back each frame and drives the instrument's buses with them. One worklet
+rather than four, because the 48-channel voice core owns most of the CPU
+budget and these are all DC/sub-audio boards. What each panel knob assumes
+about the pot wiring - which is cross-board and absent from the repo - is
+stated at the mapping in `panel/app.js`, not buried in a curve.
 
 **Adding a board:** compile its wasm as above, copy an existing bench dir as
 a template (panel sections + controls from that board's real panel, a source

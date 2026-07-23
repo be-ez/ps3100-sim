@@ -372,6 +372,62 @@ function goertzelDb(x, f) {
     `chord ${rms.toExponential(1)}, idle ${rmsI.toExponential(1)}`);
 }
 
+// ---- panelctl: the composed conditioning boards route pin -> channel ----
+// The per-board laws are refereed by pytest (test_{wavectl,freqctl,filterctl,
+// relctl}_*); what dsp/panelctl.dsp adds is the wiring, so this checks that
+// each output channel carries the pin it claims, against the SPICE-anchored
+// constants in those files' headers. A swapped or mis-ordered channel here
+// would silently drive the wrong bus on the panel.
+{
+  const A = "/panelctl/";
+  const settle = async (params, seconds = 1.2) => {
+    const proc = await makeProcessor("panelctl");
+    for (const [k, v] of Object.entries(params)) proc.setParamValue(A + k, v);
+    const N = Math.round(SR * seconds);
+    // 3 inputs (PWM IN, FC MOD 1/2); silent for the DC checks
+    const zero = () => new Float32Array(N);
+    const out = proc.render([zero(), zero(), zero()], N);
+    return out.map((ch) => ch[N - 1]);      // settled value of every channel
+  };
+  const near = (a, b, tol) => Math.abs(a - b) <= tol;
+
+  const saw = await settle({ "wave/wave": 1 });
+  check("panelctl ch0 = WFR, sawtooth clamp +14.83 V",
+    near(saw[0], 14.826, 0.05), `${saw[0].toFixed(3)} V`);
+  check("panelctl ch1 = WFD, 0 V in the saw position",
+    near(saw[1], 0.0, 0.05), `${saw[1].toFixed(3)} V`);
+
+  const wide = await settle({ "wave/wave": 2 });
+  check("panelctl WFD wide-pulse divider +7.366 V",
+    near(wide[1], 7.366, 0.05), `${wide[1].toFixed(3)} V`);
+
+  check("panelctl ch2 = temperament bus, -1.62 V at panel-neutral",
+    near(saw[2], -1.62, 0.08), `${saw[2].toFixed(3)} V`);
+
+  // FCU/FCL sit in the narrow mV-scale window the 4558 clip allows, and BAL
+  // must move them in OPPOSITE directions (the upper/lower crossfade)
+  const fcOk = saw[3] > -0.47 && saw[3] < 0.04 && saw[4] > -0.40 && saw[4] < 0.11;
+  check("panelctl ch3/ch4 = FCU/FCL inside the clipped bus range",
+    fcOk, `FCU ${saw[3].toFixed(4)} V, FCL ${saw[4].toFixed(4)} V`);
+  const balP = await settle({ "filt/vbal": 6 });
+  const balN = await settle({ "filt/vbal": -6 });
+  check("panelctl KBD FILTER BALANCE splits FCU/FCL oppositely",
+    (balP[3] - balN[3]) * (balP[4] - balN[4]) < 0,
+    `dFCU ${(balP[3] - balN[3]).toFixed(4)}, dFCL ${(balP[4] - balN[4]).toFixed(4)}`);
+
+  // release terminal: the three panel switch states (relctl needs ~0.4 s of
+  // pre-roll, its C1 lattice slews every full-damp transition over ~40-60 ms)
+  const rel = await settle({ "rel/release": 1 });
+  const half = await settle({ "rel/hd": 1, "rel/halfd": 1 });
+  const damp = await settle({});
+  check("panelctl ch5 = release terminal, RELEASE +11.61 V",
+    near(rel[5], 11.61, 0.1), `${rel[5].toFixed(3)} V`);
+  check("panelctl release terminal, HALF D +5.8..8.0 V",
+    half[5] > 5.7 && half[5] < 8.1, `${half[5].toFixed(3)} V`);
+  check("panelctl release terminal, DAMPED +0.14 V",
+    near(damp[5], 0.143, 0.05), `${damp[5].toFixed(3)} V`);
+}
+
 // ---- full panel: every address it drives must exist in the built wasm ----
 // setParamValue silently ignores unknown paths, so a typo leaves the control
 // looking alive while doing nothing. This pins panel/params.js to the builds.
@@ -396,7 +452,8 @@ function goertzelDb(x, f) {
     missing.length ? missing.map(([k, a]) => `${k} -> ${a}`).join(", ")
       : `${Object.keys(PARAM).length} addresses`);
 
-  const MOD_DIR = { mg1: "mg1noise", modvca: "modvca", sh: "sh", vp: "vp" };
+  const MOD_DIR = { mg1: "mg1noise", modvca: "modvca", sh: "sh", vp: "vp",
+                    panelctl: "panelctl" };
   for (const [board, addrs] of Object.entries(MOD_PARAM)) {
     const have = await addrsOf(MOD_DIR[board]);
     const bad = addrs.filter((a) => !have.has(a));

@@ -18,7 +18,7 @@ import {
   PANEL, SECTIONS, SCALES, CONTROLS, JACKS, PATCH_BOXES, VCA_TRIANGLES,
   DINS, FLOW, TEXTS, STATUS_LEGEND,
 } from "./layout.js";
-import { PARAM } from "./params.js";
+import { PARAM, CTL, CTL_CH } from "./params.js";
 
 // The real keyboard: 48 notes, F2..E6 - exactly the 12 pitch classes x 4
 // octave rows poly.dsp hardwires. Every key is its own permanent channel.
@@ -45,8 +45,54 @@ const $ = (id) => document.getElementById(id);
 const state = {};
 
 const attackSec = (k) => 0.001 * (1000 ** k);
-const releaseSec = (k) => 0.05 * (200 ** k);
-const tuneVolts = (k) => -1.62 + (k - 0.5) * 4 * (0.93 / 12);
+
+// ---- panel knob -> board pin volts -------------------------------------
+// The conditioning boards take pin voltages; the panel pot wiring that sets
+// them is cross-board and absent from the repo (dsp/filterctl.dsp and
+// dsp/freqctl.dsp both say so and expose the pins directly), so the sweeps
+// below are stated assumptions, not transcriptions.
+
+// FINE / COARSE land on freqctl pins 40 / 39 over their full +-14.9 V range.
+// The board's own R-ratios do the rest: COARSE enters the summer at -0.122
+// and FINE at -0.0213, so one turn of COARSE is ~1.95 octaves and one of
+// FINE ~0.34, without either law being invented here.
+const pinVolts = (k) => (k - 0.5) * 2 * 14.9;
+
+// CUTOFF FREQUENCY sweeps filterctl pin 5 far enough to take IC1a clip to
+// clip at the factory FC ADJ (ofs ~ +6.77 V, so vo1 = ofs - vfc covers
+// +-13 V over vfc = -6.2 .. +19.8). Knob 0.657 reproduces the netlist's own
+// default operating point, Vfcu = -0.137 V (gate.dsp vfc = -6, f0 ~ 1.6 kHz).
+const cutoffVolts = (k) => -6.23 + k * 26.0;
+
+// PULSE WIDTH MODULATION INTENSITY drives the PWM IN pin over the range
+// wavectl's affine law was fitted on (-5 .. +6 V).
+const pwmVolts = (k) => -5.0 + k * 11.0;
+
+// filterctl bus volts -> gate.dsp's vfc slider units. gate.dsp maps its
+// slider LINEARLY onto the physical open-circuit bus, vfcu = 0.12 + vfc *
+// (0.6/14), so this is that mapping inverted. poly.dsp shares ONE FC bus
+// across all 48 channels - its header calls it "the same blended FCU/FCL
+// bus" - so the two halves are averaged into it. Splitting them by octave
+// row is the phase-4 work that makes KBD FILTER BALANCE mean anything.
+const busToVfc = (fcu, fcl) => ((fcu + fcl) / 2 - 0.12) * (14.0 / 0.6);
+
+// Release terminal volts -> the per-key release RC in seconds. Log-linear
+// through the anchors the SPICE referee pins in
+// tests/test_gate_spice.py::test_release_bus_sets_release_rate:
+// +0.14 V ~20 ms (damped), +5.8..+8.0 V tens of ms (half damp), +11.61 V
+// 4.7 s (full release, the R401 4.7M RC). NB poly.dsp's release slider
+// floors at 0.05 s, so the damped state lands there rather than at 20 ms.
+const REL_ANCHORS = [[0.14, 0.02], [5.8, 0.045], [8.0, 0.07], [11.61, 4.7]];
+function relSeconds(v) {
+  const a = REL_ANCHORS;
+  if (v <= a[0][0]) return a[0][1];
+  for (let i = 1; i < a.length; i++) {
+    if (v > a[i][0]) continue;
+    const t = (v - a[i - 1][0]) / (a[i][0] - a[i - 1][0]);
+    return Math.exp(Math.log(a[i - 1][1]) * (1 - t) + Math.log(a[i][1]) * t);
+  }
+  return a[a.length - 1][1];
+}
 
 let audioContext = null, inst = null, mods = null, analyser = null, building = null;
 let outGain = null;
@@ -59,7 +105,21 @@ const setI = (addr, v) => { if (inst) inst.setParamValue(addr, v); };
 const nop = () => {};
 const BIND = {
   // --- KLM-64E / poly core
-  cutoff: { board: "KLM-69E gate - poly vfc bus", init: 0.7, set: pushCutoff },
+  // --- conditioning boards, through the composed panelctl wasm
+  cutoff: { board: "KLM-63 filterctl vfc -> FCU/FCL -> poly FC bus", init: 0.657,
+    set: (v) => setC(CTL.vfc, cutoffVolts(v)) },
+  waveform: { board: "KLM-63 wavectl selector -> WFR/WFD rails", init: 1,
+    set: (i) => { setC(CTL.wave, i); setC(CTL.pwmOn, i === 5 ? 1 : 0); } },
+  pwmInt: { board: "KLM-63 wavectl PWM IN pin", init: 0.45,
+    set: (v) => setC(CTL.pwmDc, pwmVolts(v)) },
+  fine: { board: "KLM-62D freqctl FINE (pin 40)", init: 0.5,
+    set: (v) => setC(CTL.fine, pinVolts(v)) },
+  coarse: { board: "KLM-62D freqctl COARSE (pin 39)", init: 0.5,
+    set: (v) => setC(CTL.coarse, pinVolts(v)) },
+  // three-detent switch: 0 RELEASE (pin 6 grounded), 1 HALF D, 2 DAMPED
+  releaseMode: { board: "KLM-62D relctl -> gate release terminal", init: 0,
+    set: (i) => { setC(CTL.relSw, i === 0 ? 1 : 0); setC(CTL.hdSw, i === 1 ? 1 : 0); } },
+
   attack: { board: "KLM-69E gate - per-key attack RC", init: 0.25,
     set: (v) => setI(PARAM.attack, attackSec(v)) },
 
@@ -119,10 +179,8 @@ const BIND = {
   power: { board: "", init: 0, set: nop },
 };
 
-function pushCutoff() {
-  const base = -14 + 14 * (state.cutoff ?? 0.7);
-  setI(PARAM.vfc, Math.min(0, Math.max(-14, base + 4 * modSum.cutoff)));
-}
+// panelctl parameter push (null until the audio graph is built)
+function setC(addr, v) { if (mods?.ctl) mods.ctl.setParamValue(addr, v); }
 
 // ---------- render the silkscreen field from layout.js ----------
 
@@ -445,7 +503,7 @@ function warnIfSpFallback() {
 
 let cvSink = null;   // zero-gain pull: analyser subgraphs must reach the
                      // destination or Chrome never renders them
-function tapCv(node, channel = null) {
+function tapCv(node, channel = null, width = 2) {
   if (!cvSink) {
     cvSink = new GainNode(audioContext, { gain: 0 });
     cvSink.connect(audioContext.destination);
@@ -453,7 +511,7 @@ function tapCv(node, channel = null) {
   const an = new AnalyserNode(audioContext, { fftSize: 512 });
   an.connect(cvSink);
   if (channel !== null) {         // pick ONE channel; plain connect down-mixes
-    const split = new ChannelSplitterNode(audioContext, { numberOfOutputs: 2 });
+    const split = new ChannelSplitterNode(audioContext, { numberOfOutputs: width });
     node.connect(split);
     split.connect(an, channel);
   } else {
@@ -466,12 +524,13 @@ function tapCv(node, channel = null) {
 async function buildAudio() {
   audioContext = new AudioContext({ sampleRate: 48000, latencyHint: "interactive" });
 
-  const [instrument, mg1, mg2, sh, vp] = await Promise.all([
+  const [instrument, mg1, mg2, sh, vp, ctl] = await Promise.all([
     loadFaustNode(audioContext, "instrument_poly", "../poly/generated"),
     loadFaustNode(audioContext, "mg1_noise", "../mg1noise/generated"),
     loadFaustNode(audioContext, "modvca", "../modvca/generated"),
     loadFaustNode(audioContext, "sh", "../sh/generated"),
     loadFaustNode(audioContext, "vp", "../vp/generated"),
+    loadFaustNode(audioContext, "panelctl", "../panelctl/generated"),
   ]);
   inst = instrument;
 
@@ -492,6 +551,7 @@ async function buildAudio() {
   keepAlive.connect(mg1);
   keepAlive.connect(mg2);
   keepAlive.connect(vp);   // one input, channels are internal to the worklet
+  keepAlive.connect(ctl);  // PWM IN / FC MOD pins; the patch field feeds these
 
   mg2.setParamValue("/modvca/probe", 3);              // MG2 triangle on ch0
   sh.setParamValue("/sh/testmode", 0);                // external in = noise
@@ -505,10 +565,16 @@ async function buildAudio() {
     src.start();
   })();
 
-  watchAudioHealth(audioContext, [inst, mg1, mg2, sh, vp]);
+  watchAudioHealth(audioContext, [inst, mg1, mg2, sh, vp, ctl]);
+
+  // the conditioning boards' six pins, read back at frame rate: all four are
+  // DC/sub-audio boards (the slowest corner in any of them is wavectl's 47 ms
+  // rail release), so a ~16 ms poll resolves every one of their dynamics
+  const ctlVal = Object.fromEntries(
+    Object.entries(CTL_CH).map(([k, ch]) => [k, tapCv(ctl, ch, 6)]));
 
   mods = {
-    mg1, mg2, sh, vp,
+    mg1, mg2, sh, vp, ctl, ctlVal,
     mg1Val: tapCv(mg1),
     mg2Val: tapCv(mg2),
     shVal: tapCv(sh),
@@ -523,14 +589,13 @@ async function buildAudio() {
 // push every bound control's current position at its owner
 function pushAllParams() {
   setI(PARAM.rescv, 0.5);   // base; modulation adds per frame
-  setI(PARAM.cvTune, tuneVolts(0.5));
-  setI(PARAM.release, releaseSec(0.35));
   setI(PARAM.multiple, 0);
+  // cvTune, vfc, release, wfr and wfd are no longer pushed from here: they
+  // are read back off panelctl's pins every frame (see the scope onFrame).
   for (const c of CONTROLS) {
     const b = c.bind ? BIND[c.bind] : null;
     if (b && b.set !== nop) b.set(state[c.bind]);
   }
-  pushCutoff();
 }
 
 async function powerOn() {
@@ -603,6 +668,7 @@ const lampGlow = (el, g) => {
 };
 
 const modSum = { sweep: 0, pitch: 0, cutoff: 0 };
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 window.__cvDebug = () => {
   let outRms = null;
@@ -611,12 +677,15 @@ window.__cvDebug = () => {
     analyser.getFloatTimeDomainData(b);
     outRms = Math.sqrt(b.reduce((s2, v) => s2 + v * v, 0) / b.length);
   }
-  const inst_ = {};
+  const inst_ = {}, ctl_ = {};
   if (inst) for (const [k, a] of Object.entries(PARAM)) inst_[k] = inst.getParamValue(a);
+  if (mods?.ctl) for (const [k, a] of Object.entries(CTL)) ctl_[k] = mods.ctl.getParamValue(a);
+  const pins_ = {};
+  if (mods?.ctlVal) for (const [k, f] of Object.entries(mods.ctlVal)) pins_[k] = f();
   return mods && {
     mg1: mods.mg1Val(), mg2: mods.mg2Val(), sh: mods.shVal(),
     vp1: mods.vp1Val(), vp2: mods.vp2Val(),
-    outRms, ctxState: audioContext?.state, nkeys: held.size, inst: inst_,
+    outRms, ctxState: audioContext?.state, nkeys: held.size, inst: inst_, ctl: ctl_, pins: pins_,
   };
 };
 
@@ -645,7 +714,21 @@ spectrumScope($("scope"), () => analyser, () => audioContext.sampleRate, {
     modSum.sweep = state.mg2ToRes ? src.mg2 * (state.extToRes ?? 0) : 0;
 
     setI(PARAM.rescv, Math.min(1, Math.max(0, 0.5 + 0.4 * modSum.sweep)));
-    setI(PARAM.cvTune, tuneVolts(state.scale ?? 0.5) + 0.25 * modSum.pitch);
-    pushCutoff();
+
+    // ---- conditioning boards -> the instrument's buses ----
+    // Every value below is a VOLTAGE AT A BOARD PIN computed by a
+    // SPICE-refereed model, not a panel curve invented here.
+    const c = mods.ctlVal;
+    // KLM-63 WAVE FORM rails -> the signal generators' shaper rails
+    setI(PARAM.wfr, clamp(c.wfr(), 0, 14.9));
+    setI(PARAM.wfd, clamp(c.wfd(), 0, 13));
+    // KLM-62D temperament bus -> the master pitch CV (same bus, same units);
+    // panel-level pitch modulation still sums on top until the patch field
+    // reaches freqctl's own MOD pins
+    setI(PARAM.cvTune, clamp(c.bus() + 0.25 * modSum.pitch, -9, -0.55));
+    // KLM-63 FCU/FCL -> the shared KORG35 cutoff bus
+    setI(PARAM.vfc, clamp(busToVfc(c.fcu(), c.fcl()) + 4 * modSum.cutoff, -14, 0));
+    // KLM-62D gate release terminal -> the per-key release RC
+    setI(PARAM.release, clamp(relSeconds(c.rel()), 0.05, 10));
   },
 });

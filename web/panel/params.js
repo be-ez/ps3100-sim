@@ -13,6 +13,7 @@ export const PARAM = {
   attack: `${P}poly/poly/attack`,
   release: `${P}poly/poly/release`,
   cvTune: `${P}poly/poly/cv`,
+  wfr: `${P}poly/poly/wfr`,
   nkeys: `${P}vca/geg/trigger/nkeys`,
   multiple: `${P}vca/geg/trigger/multiple`,
   gegDelay: `${P}vca/geg/delay`,
@@ -33,4 +34,25 @@ export const MOD_PARAM = {
   modvca: ["/modvca/mg2_rate", "/modvca/probe"],
   sh: ["/sh/clock", "/sh/testmode"],
   vp: ["/vp/knob1", "/vp/knob2", "/vp/vin1", "/vp/vin2", "/vp/monitor"],
+  panelctl: [
+    "/panelctl/wave/wave", "/panelctl/wave/pwm_dc", "/panelctl/wave/pwm_on",
+    "/panelctl/wave/tri_adj", "/panelctl/freq/fine", "/panelctl/freq/coarse",
+    "/panelctl/freq/ttune", "/panelctl/filt/vfc", "/panelctl/filt/vbal",
+    "/panelctl/filt/fcadj", "/panelctl/rel/release", "/panelctl/rel/hd",
+  ],
+};
+
+// dsp/panelctl.dsp output channels: the board pins the panel reads back.
+export const CTL_CH = { wfr: 0, wfd: 1, bus: 2, fcu: 3, fcl: 4, rel: 5 };
+
+export const CTL = {
+  wave: "/panelctl/wave/wave",
+  pwmDc: "/panelctl/wave/pwm_dc",
+  pwmOn: "/panelctl/wave/pwm_on",
+  fine: "/panelctl/freq/fine",
+  coarse: "/panelctl/freq/coarse",
+  vfc: "/panelctl/filt/vfc",
+  vbal: "/panelctl/filt/vbal",
+  relSw: "/panelctl/rel/release",
+  hdSw: "/panelctl/rel/hd",
 };

@@ -1,0 +1,356 @@
+{
+    "name": "panelctl",
+    "filename": "panelctl",
+    "version": "2.86.2",
+    "compile_options": "-lang wasm-i -fpga-mem-th 4 -ct 1 -es 1 -mcd 16 -mdd 1024 -mdy 33 -double -ftz 2",
+    "library_list": [
+        "/usr/share/faust/stdfaust.lib",
+        "/faust/user/inc0/wavectl.dsp",
+        "/faust/user/inc0/freqctl.dsp",
+        "/usr/share/faust/signals.lib",
+        "/usr/share/faust/maths.lib",
+        "/usr/share/faust/platform.lib",
+        "/faust/user/inc0/relctl.dsp",
+        "/usr/share/faust/basics.lib",
+        "/faust/user/inc0/filterctl.dsp"
+    ],
+    "include_pathnames": [
+        "/faust/user/inc0",
+        "/share/faust",
+        "/usr/local/share/faust",
+        "/usr/share/faust",
+        "."
+    ],
+    "size": 288,
+    "code": "kBLa",
+    "inputs": 3,
+    "outputs": 6,
+    "meta": [
+        {
+            "basics.lib/name": "Faust Basic Element Library"
+        },
+        {
+            "basics.lib/version": "1.23.0"
+        },
+        {
+            "compile_options": "-lang wasm-i -fpga-mem-th 4 -ct 1 -es 1 -mcd 16 -mdd 1024 -mdy 33 -double -ftz 2"
+        },
+        {
+            "filename": "panelctl"
+        },
+        {
+            "maths.lib/author": "GRAME"
+        },
+        {
+            "maths.lib/copyright": "GRAME"
+        },
+        {
+            "maths.lib/license": "LGPL with exception"
+        },
+        {
+            "maths.lib/name": "Faust Math Library"
+        },
+        {
+            "maths.lib/version": "2.9.0"
+        },
+        {
+            "name": "panelctl"
+        },
+        {
+            "platform.lib/name": "Generic Platform Library"
+        },
+        {
+            "platform.lib/version": "1.3.0"
+        },
+        {
+            "signals.lib/name": "Faust Routing Library"
+        },
+        {
+            "signals.lib/version": "1.6.0"
+        }
+    ],
+    "ui": [
+        {
+            "type": "vgroup",
+            "label": "panelctl",
+            "items": [
+                {
+                    "type": "vgroup",
+                    "label": "filt",
+                    "items": [
+                        {
+                            "type": "hslider",
+                            "label": "fcadj",
+                            "varname": "fHslider11",
+                            "shortname": "fcadj",
+                            "address": "/panelctl/filt/fcadj",
+                            "index": 208,
+                            "init": 0.5,
+                            "min": 0,
+                            "max": 1,
+                            "step": 0.001
+                        },
+                        {
+                            "type": "hslider",
+                            "label": "vbal",
+                            "varname": "fHslider10",
+                            "shortname": "vbal",
+                            "address": "/panelctl/filt/vbal",
+                            "index": 200,
+                            "init": 0,
+                            "min": -15,
+                            "max": 15,
+                            "step": 0.001
+                        },
+                        {
+                            "type": "hslider",
+                            "label": "vfc",
+                            "varname": "fHslider12",
+                            "shortname": "vfc",
+                            "address": "/panelctl/filt/vfc",
+                            "index": 216,
+                            "init": 0,
+                            "min": -15,
+                            "max": 15,
+                            "step": 0.001
+                        },
+                        {
+                            "type": "hslider",
+                            "label": "vmod1",
+                            "varname": "fHslider13",
+                            "shortname": "vmod1",
+                            "address": "/panelctl/filt/vmod1",
+                            "index": 224,
+                            "init": 0,
+                            "min": -15,
+                            "max": 15,
+                            "step": 0.001
+                        },
+                        {
+                            "type": "hslider",
+                            "label": "vmod2",
+                            "varname": "fHslider14",
+                            "shortname": "vmod2",
+                            "address": "/panelctl/filt/vmod2",
+                            "index": 232,
+                            "init": 0,
+                            "min": -15,
+                            "max": 15,
+                            "step": 0.001
+                        }
+                    ]
+                },
+                {
+                    "type": "vgroup",
+                    "label": "freq",
+                    "items": [
+                        {
+                            "type": "hslider",
+                            "label": "coarse",
+                            "varname": "fHslider6",
+                            "shortname": "coarse",
+                            "address": "/panelctl/freq/coarse",
+                            "index": 144,
+                            "init": 0,
+                            "min": -14.9,
+                            "max": 14.9,
+                            "step": 0.001
+                        },
+                        {
+                            "type": "hslider",
+                            "label": "fine",
+                            "varname": "fHslider7",
+                            "shortname": "fine",
+                            "address": "/panelctl/freq/fine",
+                            "index": 152,
+                            "init": 0,
+                            "min": -14.9,
+                            "max": 14.9,
+                            "step": 0.001
+                        },
+                        {
+                            "type": "nentry",
+                            "label": "iload",
+                            "varname": "fEntry2",
+                            "shortname": "iload",
+                            "address": "/panelctl/freq/iload",
+                            "index": 192,
+                            "init": 0,
+                            "min": -0.002,
+                            "max": 0.002,
+                            "step": 1e-7
+                        },
+                        {
+                            "type": "hslider",
+                            "label": "lin",
+                            "varname": "fHslider2",
+                            "shortname": "lin",
+                            "address": "/panelctl/freq/lin",
+                            "index": 96,
+                            "init": 0.5,
+                            "min": 0,
+                            "max": 1,
+                            "step": 0.001
+                        },
+                        {
+                            "type": "hslider",
+                            "label": "mod1",
+                            "varname": "fHslider5",
+                            "shortname": "mod1",
+                            "address": "/panelctl/freq/mod1",
+                            "index": 136,
+                            "init": 0,
+                            "min": -5,
+                            "max": 5,
+                            "step": 0.001
+                        },
+                        {
+                            "type": "hslider",
+                            "label": "mod2",
+                            "varname": "fHslider4",
+                            "shortname": "mod2",
+                            "address": "/panelctl/freq/mod2",
+                            "index": 128,
+                            "init": 0,
+                            "min": -5,
+                            "max": 5,
+                            "step": 0.001
+                        },
+                        {
+                            "type": "hslider",
+                            "label": "modr1",
+                            "varname": "fHslider8",
+                            "shortname": "modr1",
+                            "address": "/panelctl/freq/modr1",
+                            "index": 160,
+                            "init": 0,
+                            "min": -5,
+                            "max": 5,
+                            "step": 0.001
+                        },
+                        {
+                            "type": "hslider",
+                            "label": "modr2",
+                            "varname": "fHslider9",
+                            "shortname": "modr2",
+                            "address": "/panelctl/freq/modr2",
+                            "index": 168,
+                            "init": 0,
+                            "min": -5,
+                            "max": 5,
+                            "step": 0.001
+                        },
+                        {
+                            "type": "hslider",
+                            "label": "ttune",
+                            "varname": "fHslider3",
+                            "shortname": "ttune",
+                            "address": "/panelctl/freq/ttune",
+                            "index": 104,
+                            "init": 0.5,
+                            "min": 0,
+                            "max": 1,
+                            "step": 0.001
+                        }
+                    ]
+                },
+                {
+                    "type": "vgroup",
+                    "label": "rel",
+                    "items": [
+                        {
+                            "type": "hslider",
+                            "label": "halfd",
+                            "varname": "fHslider16",
+                            "shortname": "halfd",
+                            "address": "/panelctl/rel/halfd",
+                            "index": 248,
+                            "init": 1,
+                            "min": 0,
+                            "max": 1,
+                            "step": 0.001
+                        },
+                        {
+                            "type": "hslider",
+                            "label": "hd",
+                            "varname": "fHslider17",
+                            "shortname": "hd",
+                            "address": "/panelctl/rel/hd",
+                            "index": 256,
+                            "init": 0,
+                            "min": 0,
+                            "max": 1,
+                            "step": 1
+                        },
+                        {
+                            "type": "hslider",
+                            "label": "release",
+                            "varname": "fHslider15",
+                            "shortname": "release",
+                            "address": "/panelctl/rel/release",
+                            "index": 240,
+                            "init": 0,
+                            "min": 0,
+                            "max": 1,
+                            "step": 1
+                        }
+                    ]
+                },
+                {
+                    "type": "vgroup",
+                    "label": "wave",
+                    "items": [
+                        {
+                            "type": "hslider",
+                            "label": "pwm_dc",
+                            "varname": "fHslider1",
+                            "shortname": "pwm_dc",
+                            "address": "/panelctl/wave/pwm_dc",
+                            "index": 72,
+                            "init": 0,
+                            "min": -14.9,
+                            "max": 14.9,
+                            "step": 0.001
+                        },
+                        {
+                            "type": "nentry",
+                            "label": "pwm_on",
+                            "varname": "fEntry1",
+                            "shortname": "pwm_on",
+                            "address": "/panelctl/wave/pwm_on",
+                            "index": 64,
+                            "init": 0,
+                            "min": 0,
+                            "max": 1,
+                            "step": 1
+                        },
+                        {
+                            "type": "hslider",
+                            "label": "tri_adj",
+                            "varname": "fHslider0",
+                            "shortname": "tri_adj",
+                            "address": "/panelctl/wave/tri_adj",
+                            "index": 8,
+                            "init": 0.5,
+                            "min": 0,
+                            "max": 1,
+                            "step": 0.001
+                        },
+                        {
+                            "type": "nentry",
+                            "label": "wave",
+                            "varname": "fEntry0",
+                            "shortname": "wave",
+                            "address": "/panelctl/wave/wave",
+                            "index": 0,
+                            "init": 1,
+                            "min": 0,
+                            "max": 5,
+                            "step": 1
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
